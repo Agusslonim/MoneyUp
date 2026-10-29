@@ -1,0 +1,5 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Ocurrió un error";
+}
+<section class="coming-soon"><div class="container"><div class="coming-card"><h1>No pudimos cargar esta página.</h1><p>Volvé a intentarlo desde el inicio.</p><a class="button button-primary" asp-controller="Home" asp-action="Index">Volver al inicio</a>@if (Model.ShowRequestId) { <p class="error-id">Referencia: @Model.RequestId</p> }</div></div></section>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="MoneyUp te ayuda a organizar tus ingresos, entender tus gastos y alcanzar tus metas. Un proyecto de educación financiera para jóvenes." />
+    <meta name="theme-color" content="#7c3aed" />
+    <title>@ViewData["Title"] | MoneyUp</title>
+    <link rel="icon" type="image/png" href="~/images/logo-original.png" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+    <header class="site-header">
+        <div class="container header-inner">
+            <a class="brand" asp-controller="Home" asp-action="Index" aria-label="MoneyUp, inicio">
+                <span class="brand-mark" aria-hidden="true"><img src="~/images/logo-original.png" alt="" /></span>
+                <span class="brand-word">Money<span>Up</span></span>
+            </a>
+            <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-principal" aria-label="Abrir menú"><span class="icon icon-menu" aria-hidden="true"></span></button>
+            <nav id="menu-principal" class="main-nav" aria-label="Navegación principal">
+                <a href="@Url.Action("Index", "Home")#inicio">Inicio</a>
+                <a href="@Url.Action("Index", "Home")#que-es">Qué es</a>
+                <a href="@Url.Action("Index", "Home")#funciones">Funciones</a>
+                <a href="@Url.Action("Index", "Home")#como-funciona">Cómo funciona</a>
+                <a href="@Url.Action("Index", "Home")#beneficios">Beneficios</a>
+                <div class="nav-account">
+                    <a asp-controller="Cuenta" asp-action="IniciarSesion">Iniciar sesión</a>
+                    <a class="button button-white" asp-controller="Cuenta" asp-action="Registro">Registrarme <span class="icon icon-flecha" aria-hidden="true"></span></a>
+                </div>
+            </nav>
+        </div>
+    </header>
+    <main id="contenido" tabindex="-1">@RenderBody()</main>
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <div><a class="footer-brand" asp-controller="Home" asp-action="Index">MoneyUp</a><p>Organizá tu dinero, alcanzá tus metas.</p></div>
+            <nav aria-label="Enlaces del pie"><a href="@Url.Action("Index", "Home")#que-es">Conocé MoneyUp</a><button class="text-button" type="button" data-help>Ayuda</button></nav>
+            <p>© @DateTime.Now.Year MoneyUp · Proyecto educativo</p>
+        </div>
+    </footer>
+    <dialog id="ayuda-dialog" aria-labelledby="ayuda-titulo">
+        <div class="dialog-heading"><h2 id="ayuda-titulo">Estamos empezando</h2><button class="close-dialog" type="button" aria-label="Cerrar ayuda"><span class="icon icon-cerrar" aria-hidden="true"></span></button></div>
+        <p>Esta primera versión presenta MoneyUp. Los ejemplos de saldo y metas son ilustrativos. El registro, los movimientos y Up se incorporarán en las próximas etapas.</p>
+        <form method="dialog"><button class="button button-primary">Entendido</button></form>
+    </dialog>
+    <script src="~/js/site.js" asp-append-version="true" defer></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
