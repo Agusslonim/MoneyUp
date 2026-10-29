@@ -1,3 +1,7 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using MoneyUp.Data;
@@ -21,6 +25,11 @@ public class CuentaController : Controller
     [HttpGet]
     public IActionResult Registro()
     {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectToAction("Index", "Inicio");
+        }
+
         ViewData["Title"] = "Registrarse";
         return View(new CuentaRegistroViewModel());
     }
@@ -98,7 +107,7 @@ public class CuentaController : Controller
             await _usuarioDataService.RegistrarAsync(model, passwordHash);
 
             TempData["CuentaMensaje"] = "Tu cuenta fue creada. Ya podés iniciar sesión.";
-            TempData["CuentaDetalle"] = "La función de inicio de sesión sigue en desarrollo, pero podés continuar con el flujo de acceso cuando esté lista.";
+            TempData["CuentaDetalle"] = "Bienvenido a MoneyUp.";
             return RedirectToAction(nameof(IniciarSesion));
         }
         catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601)
@@ -116,12 +125,19 @@ public class CuentaController : Controller
     }
 
     [HttpGet]
-    public IActionResult IniciarSesion(string? mensaje = null)
+    public IActionResult IniciarSesion(string? returnUrl = null)
     {
-        ViewData["Title"] = "Inicio de sesión";
-        if (!string.IsNullOrWhiteSpace(mensaje))
+        if (User.Identity?.IsAuthenticated == true)
         {
-            TempData["CuentaMensaje"] = mensaje;
+            return RedirectToAction("Index", "Inicio");
+        }
+
+        ViewData["Title"] = "Inicio de sesión";
+        ViewData["ReturnUrl"] = returnUrl;
+
+        if (TempData["CuentaMensaje"] is string mensaje)
+        {
+            ViewData["CuentaMensaje"] = mensaje;
         }
 
         return View(new CuentaLoginViewModel());
@@ -129,16 +145,89 @@ public class CuentaController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult IniciarSesion(CuentaLoginViewModel model)
+    public async Task<IActionResult> IniciarSesion(CuentaLoginViewModel model, string? returnUrl = null)
     {
         if (!ModelState.IsValid)
         {
             return View(model);
         }
 
-        TempData["CuentaMensaje"] = "La función de inicio de sesión aún está en desarrollo.";
-        TempData["CuentaDetalle"] = "Podés seguir revisando la navegación y la creación de cuenta mientras se completa la autenticación.";
-        return View(model);
+        model.Email = model.Email.Trim();
+
+        try
+        {
+            var usuario = await _usuarioDataService.ObtenerPorEmailAsync(model.Email);
+            if (usuario == null)
+            {
+                ModelState.AddModelError(string.Empty, "El correo o la contraseña son incorrectos.");
+                model.Contrasena = string.Empty;
+                return View(model);
+            }
+
+            var passwordHasher = new PasswordHasher<Usuario>();
+            var verificationResult = passwordHasher.VerifyHashedPassword(usuario, usuario.ContrasenaHash, model.Contrasena);
+
+            if (verificationResult == PasswordVerificationResult.Failed)
+            {
+                ModelState.AddModelError(string.Empty, "El correo o la contraseña son incorrectos.");
+                model.Contrasena = string.Empty;
+                return View(model);
+            }
+
+            if (verificationResult == PasswordVerificationResult.SuccessRehashNeeded)
+            {
+                var newHash = passwordHasher.HashPassword(usuario, model.Contrasena);
+                await _usuarioDataService.ActualizarHashAsync(usuario.IdUsuario, newHash);
+                usuario.ContrasenaHash = newHash;
+            }
+
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.NameIdentifier, usuario.IdUsuario.ToString()),
+                new(ClaimTypes.Name, usuario.NombreCompleto)
+            };
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal,
+                new AuthenticationProperties
+                {
+                    IsPersistent = false,
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(60)
+                });
+
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            return RedirectToAction("Index", "Inicio");
+        }
+        catch (SqlException ex)
+        {
+            _logger.LogError(ex, "Error de SQL al iniciar sesión para el email {Email}.", model.Email);
+            ModelState.AddModelError(string.Empty, "No pudimos iniciar sesión en este momento. Intentalo más tarde.");
+            model.Contrasena = string.Empty;
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error inesperado al iniciar sesión para el email {Email}.", model.Email);
+            ModelState.AddModelError(string.Empty, "No pudimos iniciar sesión en este momento. Intentalo más tarde.");
+            model.Contrasena = string.Empty;
+            return View(model);
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CerrarSesion()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return RedirectToAction(nameof(IniciarSesion));
     }
 
     [HttpPost]

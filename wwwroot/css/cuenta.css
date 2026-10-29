@@ -219,22 +219,85 @@
   padding-right: 8px;
 }
 
+.input-shell input::-ms-reveal,
+.input-shell input::-ms-clear {
+  display: none;
+}
+
+.input-shell input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
 .toggle-password {
-  width: 32px;
-  height: 32px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
   border: 0;
+  border-radius: 10px;
   background: transparent;
-  display: grid;
-  place-items: center;
-  color: #151515;
+  color: #1c1c1c;
   cursor: pointer;
+  flex-shrink: 0;
   padding: 0;
   margin-left: 6px;
 }
 
-.toggle-password .icon {
+.toggle-password:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.toggle-password-icon {
+  position: relative;
+  display: inline-block;
   width: 22px;
   height: 22px;
+  background-color: currentColor;
+  -webkit-mask-image: url("../images/icons/ver.png");
+  mask-image: url("../images/icons/ver.png");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  opacity: 1;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.toggle-password-icon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  -webkit-mask-image: none;
+  mask-image: none;
+  transform: rotate(-45deg) scaleX(0.1);
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.toggle-password-icon.is-visible {
+  background-color: currentColor;
+  -webkit-mask-image: url("../images/icons/ver.png");
+  mask-image: url("../images/icons/ver.png");
+  transform: scale(1.02);
+}
+
+.toggle-password-icon:not(.is-visible)::after {
+  opacity: 1;
+  transform: rotate(-45deg) scaleX(1);
+  border-top: 2px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
 }
 
 .field-error {

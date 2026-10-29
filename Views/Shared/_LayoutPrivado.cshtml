@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] | MoneyUp</title>
+    <link rel="icon" type="image/png" href="~/images/logo-original.png" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/privado.css" asp-append-version="true" />
+</head>
+<body class="private-body">
+    <header class="private-header">
+        <div class="container private-header-inner">
+            <a class="private-brand" asp-controller="Inicio" asp-action="Index" aria-label="MoneyUp, inicio privado">
+                <span>MoneyUp</span>
+            </a>
+
+            <nav class="private-nav" aria-label="Navegación privada">
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Inicio" ? "active" : "")" asp-controller="Inicio" asp-action="Index">Inicio</a>
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Movimientos" ? "active" : "")" asp-controller="Movimientos" asp-action="Index">Movimientos</a>
+                <a href="#">Metas</a>
+                <a href="#">Estadísticas</a>
+                <a href="#">Aprendé con Up</a>
+            </nav>
+
+            <div class="private-actions" aria-label="Acciones de usuario">
+                <button type="button" class="private-icon-button private-notification-button" aria-label="Notificaciones">
+                    <span class="icon icon-notificaciones" aria-hidden="true"></span>
+                </button>
+
+                <form asp-controller="Cuenta" asp-action="CerrarSesion" method="post" class="logout-form" aria-label="Cerrar sesión">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="private-icon-button private-profile-button" aria-label="Cerrar sesión">
+                        <span class="icon icon-usuario" aria-hidden="true"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <main id="contenido" class="private-main" tabindex="-1">
+        @RenderBody()
+    </main>
+
+    <footer class="private-footer">
+        <div class="container private-footer-inner">
+            <div class="private-footer-brand">
+                <span>MoneyUp</span>
+                <p>Organizá tu dinero, alcanzá tus metas.</p>
+            </div>
+            <div class="private-footer-links">
+                <span>Teléfono: +54 11 1234 5678</span>
+                <span>Instagram</span>
+                <span>Mail</span>
+                <span>Ayuda</span>
+            </div>
+            <div class="private-footer-copy">© MoneyUp — Proyecto educativo</div>
+        </div>
+    </footer>
+
+    <script src="~/js/site.js" asp-append-version="true" defer></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

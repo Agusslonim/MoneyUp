@@ -21,7 +21,6 @@ Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\rjimswa.dswa.cache.json
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\scopedcss\bundle\MoneyUp.styles.css
-Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\q9tf35ij7z-n0x3vs3bgc.gz
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\3ih1cw6amj-61n19gt1b8.gz
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\olifbhwcl4-gt0la5jppu.gz
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\staticwebassets.build.json
@@ -71,5 +70,9 @@ Z:\MoneyUp escenciales\MoneyUp\MoneyUp\bin\Debug\net9.0\runtimes\win-arm64\nativ
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\bin\Debug\net9.0\runtimes\win-x64\native\Microsoft.Data.SqlClient.SNI.dll
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\bin\Debug\net9.0\runtimes\win-x86\native\Microsoft.Data.SqlClient.SNI.dll
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\bin\Debug\net9.0\runtimes\win\lib\net8.0\System.Runtime.Caching.dll
-Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\w8mo83ibty-aahm0mjlem.gz
-Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\pe5687ulth-3daafe4mg6.gz
+Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\q9tf35ij7z-fs7kktkylx.gz
+Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\7nmjybo7o9-t833ou9cki.gz
+Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\mru7ivngqo-24k6bmtqn5.gz
+Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\pe5687ulth-1ewwc280wa.gz
+Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\w8mo83ibty-zrqb6rse8g.gz
+Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\4jbd20t7qr-8vhc6wn8qo.gz

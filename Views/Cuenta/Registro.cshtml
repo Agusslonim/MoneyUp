@@ -47,7 +47,9 @@
                     <div class="input-shell password-shell">
                         <span class="field-icon" aria-hidden="true"><span class="icon icon-candado"></span></span>
                         <input asp-for="Contrasena" type="password" autocomplete="new-password" placeholder="Contraseña" />
-                        <button type="button" class="toggle-password" data-target="Contrasena" aria-label="Mostrar contraseña"><span class="icon icon-ver" aria-hidden="true"></span></button>
+                        <button type="button" class="toggle-password" data-target="Contrasena" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña">
+                            <span class="toggle-password-icon" aria-hidden="true"></span>
+                        </button>
                     </div>
                     <span asp-validation-for="Contrasena" class="field-error"></span>
                 </div>
@@ -57,7 +59,9 @@
                     <div class="input-shell password-shell">
                         <span class="field-icon" aria-hidden="true"><span class="icon icon-candado"></span></span>
                         <input asp-for="ConfirmarContrasena" type="password" autocomplete="new-password" placeholder="Confirmar contraseña" />
-                        <button type="button" class="toggle-password" data-target="ConfirmarContrasena" aria-label="Mostrar contraseña"><span class="icon icon-ver" aria-hidden="true"></span></button>
+                        <button type="button" class="toggle-password" data-target="ConfirmarContrasena" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña">
+                            <span class="toggle-password-icon" aria-hidden="true"></span>
+                        </button>
                     </div>
                     <span asp-validation-for="ConfirmarContrasena" class="field-error"></span>
                 </div>

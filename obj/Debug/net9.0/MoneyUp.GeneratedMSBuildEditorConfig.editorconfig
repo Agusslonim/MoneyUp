@@ -36,6 +36,14 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
+[Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Inicio/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSW5pY2lvXEluZGV4LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Movimientos/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTW92aW1pZW50b3NcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
 [Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Shared/Error.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXEVycm9yLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
@@ -46,6 +54,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Shared/_LayoutCuenta.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXRDdWVudGEuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Shared/_LayoutPrivado.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXRQcml2YWRvLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Shared/_ValidationScriptsPartial.cshtml]

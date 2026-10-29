@@ -20,15 +20,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  document.querySelectorAll('.toggle-password').forEach((button) => {
-    button.addEventListener('click', () => {
-      const targetId = button.dataset.target;
-      const input = document.getElementById(targetId);
-      if (!input) return;
-      const willShow = input.type === 'password';
-      input.type = willShow ? 'text' : 'password';
-      button.textContent = willShow ? 'Ocultar' : 'Mostrar';
-      button.setAttribute('aria-label', willShow ? 'Ocultar contraseña' : 'Mostrar contraseña');
+  const passwordButtons = document.querySelectorAll('.toggle-password');
+
+  passwordButtons.forEach((button) => {
+    const input = document.getElementById(button.dataset.target);
+    const icon = button.querySelector('.toggle-password-icon');
+
+    if (!input || !icon) {
+      return;
+    }
+
+    const setState = (isVisible) => {
+      input.type = isVisible ? 'text' : 'password';
+      button.setAttribute('aria-label', isVisible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+      button.setAttribute('aria-pressed', String(isVisible));
+      button.title = isVisible ? 'Ocultar contraseña' : 'Mostrar contraseña';
+      icon.classList.toggle('is-visible', isVisible);
+    };
+
+    setState(false);
+
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      const isVisible = input.type === 'text';
+      setState(!isVisible);
     });
   });
 });

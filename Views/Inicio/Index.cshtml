@@ -1,0 +1,135 @@
+@model MoneyUp.Models.InicioViewModel
+@{
+    ViewData["Title"] = "Inicio";
+    Layout = "_LayoutPrivado";
+}
+
+<section class="private-shell">
+    <div class="container private-welcome">
+        <div class="private-welcome-copy">
+            <h1 class="private-title">Hola, @Model.NombreUsuario</h1>
+            <p class="private-subtitle">Bienvenido a MoneyUp. Acá podés ver un resumen de tu situación financiera y seguir avanzando hacia tus metas.</p>
+        </div>
+    </div>
+
+    <div class="container private-layout">
+        <div class="private-main-column">
+            <article class="panel balance-panel">
+                <div class="panel-balance-left">
+                    <div class="balance-icon" aria-hidden="true">
+                        <span class="icon icon-dinero"></span>
+                    </div>
+                    <div class="balance-copy">
+                        <span class="label">Tu saldo actual</span>
+                        <strong>@Model.SaldoDisponible.ToString("C", new System.Globalization.CultureInfo("es-AR"))</strong>
+                    </div>
+                </div>
+
+                <div class="balance-chart" aria-hidden="true">
+                    <span class="bar bar-purple" style="height: 42%;"></span>
+                    <span class="bar bar-cyan" style="height: 62%;"></span>
+                    <span class="bar bar-violet" style="height: 84%;"></span>
+                    <svg class="balance-curve" viewBox="0 0 120 90" preserveAspectRatio="xMidYMid meet" role="presentation">
+                        <path d="M6 70 C 24 63, 42 57, 54 52 C 68 46, 78 34, 94 20 M 94 20 L 104 24 M 94 20 L 102 10" fill="none" stroke="#62d9ef" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </article>
+
+            <article class="panel">
+                <div class="panel-header">
+                    <div class="panel-title-wrap">
+                        <span class="panel-icon icon icon-objetivo" aria-hidden="true"></span>
+                        <h2>Últimos movimientos</h2>
+                    </div>
+                    <a href="#" class="panel-link" aria-disabled="true">Ver todos →</a>
+                </div>
+
+                @if (Model.UltimosMovimientos.Any())
+                {
+                    <div class="movement-list">
+                        @foreach (var movimiento in Model.UltimosMovimientos)
+                        {
+                            var signo = movimiento.TipoMovimiento == 1 ? "+" : "-";
+                            var importe = Math.Abs(movimiento.Monto).ToString("C", new System.Globalization.CultureInfo("es-AR"));
+                            var descripcion = !string.IsNullOrWhiteSpace(movimiento.Descripcion) ? movimiento.Descripcion : movimiento.Categoria;
+                            var fecha = movimiento.FechaMovimiento.ToString("dd 'de' MMMM", new System.Globalization.CultureInfo("es-AR"));
+
+                            <div class="movement-row">
+                                <div class="movement-meta">
+                                    <span class="movement-icon icon @($"icon-{movimiento.Icono}")" aria-hidden="true"></span>
+                                    <div class="movement-copy">
+                                        <strong>@descripcion</strong>
+                                        <span>@fecha</span>
+                                    </div>
+                                </div>
+                                <div class="movement-category">
+                                    <span>@movimiento.Categoria</span>
+                                </div>
+                                <div class="movement-amount @(movimiento.TipoMovimiento == 1 ? "income" : "expense")">@signo @importe</div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="empty-state">Todavía no registraste movimientos.</p>
+                }
+            </article>
+        </div>
+
+        <aside class="private-side-column">
+            <article class="panel">
+                <div class="panel-header">
+                    <div class="panel-title-wrap">
+                        <span class="panel-icon icon icon-meta" aria-hidden="true"></span>
+                        <h2>Tus metas</h2>
+                    </div>
+                    <a href="#" class="panel-link" aria-disabled="true">Ver todas →</a>
+                </div>
+
+                @if (Model.Metas.Any())
+                {
+                    <div class="goals-list">
+                        @foreach (var meta in Model.Metas)
+                        {
+                            var porcentaje = Math.Min(100m, Math.Max(0m, meta.Porcentaje));
+                            <div class="goal-item">
+                                <div class="goal-topline">
+                                    <div class="goal-name">
+                                        <span class="goal-icon icon @($"icon-{meta.Icono}")" aria-hidden="true"></span>
+                                        <div>
+                                            <strong>@meta.Nombre</strong>
+                                            <small>@meta.AhorroActual.ToString("C", new System.Globalization.CultureInfo("es-AR")) / @meta.MontoObjetivo.ToString("C", new System.Globalization.CultureInfo("es-AR"))</small>
+                                        </div>
+                                    </div>
+                                    <span class="goal-percent">@Math.Round(porcentaje, 0)%</span>
+                                </div>
+                                <div class="progress-bar" aria-label="Progreso de la meta @meta.Nombre">
+                                    <span style="width:@porcentaje%"></span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="empty-state">Todavía no creaste metas.</p>
+                }
+            </article>
+
+            <article class="panel message-panel">
+                <div class="panel-header compact-header">
+                    <div class="panel-title-wrap">
+                        <span class="panel-icon icon icon-idea" aria-hidden="true"></span>
+                        <h2>Mensaje de Up</h2>
+                    </div>
+                    <span class="chevron">›</span>
+                </div>
+                <div class="message-box">
+                    <strong>@Model.MensajeUp</strong>
+                    <p>@Model.MensajeUpDetalle</p>
+                </div>
+            </article>
+        </aside>
+    </div>
+</section>

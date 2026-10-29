@@ -1,0 +1,260 @@
+@model MoneyUp.Models.MovimientosIndexViewModel
+@{
+    ViewData["Title"] = "Movimientos";
+    Layout = "_LayoutPrivado";
+    var minYear = Math.Max(1, Model.Anio - 3);
+    var maxYear = Math.Min(9999, Model.Anio + 3);
+    if (Model.Anio < minYear) { minYear = Model.Anio; }
+    if (Model.Anio > maxYear) { maxYear = Model.Anio; }
+    var meses = new[]
+    {
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    };
+}
+
+<section class="movimientos-page">
+    <div class="container movimientos-shell">
+        <header class="movimientos-header">
+            <div>
+                <h1>Movimientos</h1>
+                <p>Registrá y organizá todos tus movimientos.</p>
+            </div>
+            <button type="button" class="btn-primary" disabled aria-disabled="true" title="Disponible próximamente">
+                + Nuevo movimiento
+            </button>
+        </header>
+
+        <div class="summary-grid">
+            <article class="summary-card">
+                <span class="summary-label">Saldo actual</span>
+                <strong>@Model.SaldoActual.ToString("C", new System.Globalization.CultureInfo("es-AR"))</strong>
+            </article>
+            <article class="summary-card income">
+                <span class="summary-label">Ingresos del mes</span>
+                <strong>@Model.IngresosMes.ToString("C", new System.Globalization.CultureInfo("es-AR"))</strong>
+            </article>
+            <article class="summary-card expense">
+                <span class="summary-label">Gastos del mes</span>
+                <strong>@Model.GastosMes.ToString("C", new System.Globalization.CultureInfo("es-AR"))</strong>
+            </article>
+            <article class="summary-card category">
+                <span class="summary-label">Categoría principal</span>
+                @if (Model.TieneCategoriaPrincipal)
+                {
+                    <strong>@Model.CategoriaPrincipalNombre</strong>
+                    <small>@Model.CategoriaPrincipalMonto.ToString("C", new System.Globalization.CultureInfo("es-AR")) · @Model.CategoriaPrincipalPorcentaje%</small>
+                }
+                else
+                {
+                    <strong>Sin gastos</strong>
+                    <small>Sin porcentajes</small>
+                }
+            </article>
+        </div>
+
+        <div class="movimientos-body">
+            <div class="movimientos-panel large-panel">
+                <div class="panel-topbar">
+                    <div>
+                        <h2>Movimientos recientes</h2>
+                    </div>
+                    <form method="get" class="filters-form" asp-action="Index" asp-controller="Movimientos">
+                        <input type="hidden" name="pagina" value="1" />
+
+                        <label class="field field-select field-month">
+                            <span class="sr-only">Mes</span>
+                            <select name="mes">
+                                @for (var mesIndex = 1; mesIndex <= 12; mesIndex++)
+                                {
+                                    <option value="@mesIndex" selected="@(mesIndex == Model.Mes ? "selected" : null)">@meses[mesIndex - 1]</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="field field-select field-year">
+                            <span class="sr-only">Año</span>
+                            <select name="anio">
+                                @for (var anioIndex = minYear; anioIndex <= maxYear; anioIndex++)
+                                {
+                                    <option value="@anioIndex" selected="@(anioIndex == Model.Anio ? "selected" : null)">@anioIndex</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="field field-search">
+                            <span class="sr-only">Buscar</span>
+                            <input type="search" name="busqueda" value="@Model.Busqueda" placeholder="Buscar movimiento o categoría" />
+                        </label>
+
+                        <label class="field field-select">
+                            <span class="sr-only">Categoría</span>
+                            <select name="categoria">
+                                <option value="">Todas</option>
+                                @foreach (var item in Model.Categorias)
+                                {
+                                    var selected = item.IdCategoria == Model.CategoriaSeleccionadaId;
+                                    <option value="@item.IdCategoria" selected="@(selected ? "selected" : null)">@item.NombreCategoria</option>
+                                }
+                            </select>
+                        </label>
+
+                        <button type="submit" class="btn-secondary">Buscar</button>
+                        @if (!string.IsNullOrWhiteSpace(Model.Busqueda) || Model.CategoriaSeleccionadaId.HasValue || Model.Mes != DateTime.Today.Month || Model.Anio != DateTime.Today.Year)
+                        {
+                            <a asp-action="Index" asp-controller="Movimientos" class="link-reset">Limpiar</a>
+                        }
+                    </form>
+                </div>
+
+                <div class="table-wrap">
+                    @if (Model.TotalResultados == 0)
+                    {
+                        <div class="empty-table">
+                            <p>No hay movimientos para este período.</p>
+                            @if (!string.IsNullOrWhiteSpace(Model.Busqueda) || Model.CategoriaSeleccionadaId.HasValue)
+                            {
+                                <a asp-action="Index" asp-controller="Movimientos" asp-route-mes="@Model.Mes" asp-route-anio="@Model.Anio" class="link-reset">Ver todos</a>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <table class="movimientos-table">
+                            <thead>
+                                <tr>
+                                    <th>Movimiento</th>
+                                    <th>Categoría</th>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Monto</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.Movimientos)
+                                {
+                                    var importe = item.Monto.ToString("C", new System.Globalization.CultureInfo("es-AR"));
+                                    <tr>
+                                        <td>
+                                            <div class="td-title">
+                                                <span class="category-icon icon @($"icon-{item.IconoCategoria}")" aria-hidden="true"></span>
+                                                <span>@item.Descripcion</span>
+                                            </div>
+                                        </td>
+                                        <td><span class="pill-tag">@item.Categoria</span></td>
+                                        <td>@item.FechaMovimiento.ToString("dd 'de' MMMM", new System.Globalization.CultureInfo("es-AR"))</td>
+                                        <td><span class="type-badge @(item.TipoMovimiento == 1 ? "ingreso" : "gasto")">@item.TipoMovimientoTexto</span></td>
+                                        <td class="amount @(item.TipoMovimiento == 1 ? "income" : "expense")">@(item.TipoMovimiento == 1 ? "+" : "−") @importe</td>
+                                        <td>
+                                            <button type="button" class="table-action" disabled aria-disabled="true" title="Disponible próximamente">⋯</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+
+                <div class="pagination-bar">
+                    <span>@(Model.TotalResultados == 0 ? "Mostrando 0 de 0 movimientos" : $"Mostrando {Model.MostrandoDesde} de {Model.TotalResultados} movimientos")</span>
+                    <div class="pagination-controls">
+                        @if (Model.PaginaActual > 1)
+                        {
+                            <a asp-action="Index"
+                               asp-controller="Movimientos"
+                               asp-route-mes="@Model.Mes"
+                               asp-route-anio="@Model.Anio"
+                               asp-route-busqueda="@Model.Busqueda"
+                               asp-route-categoria="@Model.CategoriaSeleccionadaId"
+                               asp-route-pagina="@(Model.PaginaActual - 1)"
+                               class="page-link">Anterior</a>
+                        }
+                        <span>Página @Model.PaginaActual</span>
+                        @if (Model.PaginaActual < Model.TotalPaginas)
+                        {
+                            <a asp-action="Index"
+                               asp-controller="Movimientos"
+                               asp-route-mes="@Model.Mes"
+                               asp-route-anio="@Model.Anio"
+                               asp-route-busqueda="@Model.Busqueda"
+                               asp-route-categoria="@Model.CategoriaSeleccionadaId"
+                               asp-route-pagina="@(Model.PaginaActual + 1)"
+                               class="page-link">Siguiente</a>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="movimientos-side-panel">
+                <article class="summary-panel compact-panel">
+                    <div class="panel-topbar small-topbar">
+                        <h2>Resumen del mes</h2>
+                    </div>
+                    @if (Model.GastosPorCategoria.Any())
+                    {
+                        <div class="donut-wrap">
+                            <div class="donut-chart" aria-label="Resumen de gastos del mes">
+                                @for (var i = 0; i < Model.GastosPorCategoria.Count; i++)
+                                {
+                                    var item = Model.GastosPorCategoria[i];
+                                    var color = item.Color;
+                                    var length = (item.Porcentaje / 100m) * 100;
+                                    <span class="donut-segment" style="background: conic-gradient(from @(i * 30)deg @(color) 0 @(length)%, transparent @(length)% 100%);"></span>
+                                }
+                            </div>
+                            <div class="donut-total">
+                                <strong>@Model.GastosMes.ToString("C", new System.Globalization.CultureInfo("es-AR"))</strong>
+                                <span>Total de gastos</span>
+                            </div>
+                        </div>
+                        <ul class="legend-list">
+                            @foreach (var item in Model.GastosPorCategoria)
+                            {
+                                <li>
+                                    <span class="legend-dot" style="background: @item.Color;"></span>
+                                    <span>@item.NombreCategoria</span>
+                                    <strong>@item.Porcentaje%</strong>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="empty-state-box">Sin gastos en este período.</p>
+                    }
+                </article>
+
+                <article class="summary-panel compact-panel">
+                    <div class="panel-topbar small-topbar">
+                        <h2>Presupuesto mensual</h2>
+                    </div>
+                    @if (Model.TienePresupuesto)
+                    {
+                        <div class="budget-meta">
+                            <div>
+                                <span>Límite</span>
+                                <strong>@Model.PresupuestoLimite.ToString("C", new System.Globalization.CultureInfo("es-AR"))</strong>
+                            </div>
+                            <div class="budget-right">
+                                <span>Gastado</span>
+                                <strong>@Model.PresupuestoGastado.ToString("C", new System.Globalization.CultureInfo("es-AR"))</strong>
+                            </div>
+                        </div>
+                        <div class="budget-track">
+                            <span style="width:@Math.Min(100m, Math.Max(0m, Model.PresupuestoUtilizadoPorcentaje))%"></span>
+                        </div>
+                        <div class="budget-usage">
+                            <strong>@Model.PresupuestoUtilizadoPorcentaje.ToString("0.##")%</strong>
+                            <span>@Model.PresupuestoMensaje</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="empty-state-box">No definiste un presupuesto para este mes.</p>
+                    }
+                </article>
+            </div>
+        </div>
+    </div>
+</section>
