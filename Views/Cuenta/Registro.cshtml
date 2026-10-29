@@ -1,0 +1,76 @@
+@model MoneyUp.Models.CuentaRegistroViewModel
+@{
+    ViewData["Title"] = "Registrarse";
+    Layout = "_LayoutCuenta";
+}
+
+<section class="auth-shell">
+    <div class="auth-panel auth-panel-left">
+        <div class="auth-brand-wrap">
+            <img src="~/images/logo-original.png" alt="MoneyUp" class="auth-logo" />
+        </div>
+        <h1>¡Creá tu cuenta en MoneyUp!</h1>
+        <p>Organizá tus gastos, alcanzá tus metas y tomá el control de tu dinero.</p>
+    </div>
+
+    <div class="auth-panel auth-panel-right">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2>Registrarse</h2>
+                <p>Completá tus datos para comenzar.</p>
+            </div>
+
+            <form asp-action="Registro" method="post" novalidate>
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="form-summary" aria-live="polite"></div>
+
+                <div class="field-group">
+                    <label asp-for="NombreCompleto" class="sr-only">Nombre completo</label>
+                    <div class="input-shell">
+                        <span class="field-icon" aria-hidden="true"><span class="icon icon-usuario"></span></span>
+                        <input asp-for="NombreCompleto" autocomplete="name" placeholder="Nombre completo" value="@Model.NombreCompleto" />
+                    </div>
+                    <span asp-validation-for="NombreCompleto" class="field-error"></span>
+                </div>
+
+                <div class="field-group">
+                    <label asp-for="Email" class="sr-only">Correo electrónico</label>
+                    <div class="input-shell">
+                        <span class="field-icon" aria-hidden="true"><span class="icon icon-correo"></span></span>
+                        <input asp-for="Email" type="email" autocomplete="email" placeholder="Correo electrónico" value="@Model.Email" />
+                    </div>
+                    <span asp-validation-for="Email" class="field-error"></span>
+                </div>
+
+                <div class="field-group">
+                    <label asp-for="Contrasena" class="sr-only">Contraseña</label>
+                    <div class="input-shell password-shell">
+                        <span class="field-icon" aria-hidden="true"><span class="icon icon-candado"></span></span>
+                        <input asp-for="Contrasena" type="password" autocomplete="new-password" placeholder="Contraseña" />
+                        <button type="button" class="toggle-password" data-target="Contrasena" aria-label="Mostrar contraseña"><span class="icon icon-ver" aria-hidden="true"></span></button>
+                    </div>
+                    <span asp-validation-for="Contrasena" class="field-error"></span>
+                </div>
+
+                <div class="field-group">
+                    <label asp-for="ConfirmarContrasena" class="sr-only">Confirmar contraseña</label>
+                    <div class="input-shell password-shell">
+                        <span class="field-icon" aria-hidden="true"><span class="icon icon-candado"></span></span>
+                        <input asp-for="ConfirmarContrasena" type="password" autocomplete="new-password" placeholder="Confirmar contraseña" />
+                        <button type="button" class="toggle-password" data-target="ConfirmarContrasena" aria-label="Mostrar contraseña"><span class="icon icon-ver" aria-hidden="true"></span></button>
+                    </div>
+                    <span asp-validation-for="ConfirmarContrasena" class="field-error"></span>
+                </div>
+
+                <button type="submit" class="button button-primary auth-submit">Crear cuenta</button>
+            </form>
+
+            <div class="auth-divider"></div>
+            <p class="auth-switch">¿Ya tenés una cuenta? <a asp-action="IniciarSesion">Iniciar sesión</a></p>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/js/account-validation.js" defer></script>
+}

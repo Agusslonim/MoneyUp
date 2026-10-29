@@ -20,8 +20,16 @@ build_property._RazorSourceGeneratorDebug =
 build_property.EffectiveAnalysisLevelStyle = 9.0
 build_property.EnableCodeStyleSeverity = 
 
+[Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Cuenta/IniciarSesion.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ3VlbnRhXEluaWNpYXJTZXNpb24uY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
 [Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Cuenta/Proximamente.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ3VlbnRhXFByb3hpbWFtZW50ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Cuenta/Registro.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ3VlbnRhXFJlZ2lzdHJvLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Home/Index.cshtml]
@@ -34,6 +42,14 @@ build_metadata.AdditionalFiles.CssScope =
 
 [Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Shared/_Layout.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Shared/_LayoutCuenta.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXRDdWVudGEuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/Shared/_ValidationScriptsPartial.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [Z:/MoneyUp escenciales/MoneyUp/MoneyUp/Views/_ViewImports.cshtml]

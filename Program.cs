@@ -1,5 +1,9 @@
+using MoneyUp.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
+builder.Services.AddSingleton<SqlConnectionFactory>();
+builder.Services.AddScoped<UsuarioDataService>();
 
 var app = builder.Build();
 if (!app.Environment.IsDevelopment())
