@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using MoneyUp.Data;
 using MoneyUp.Models;
+using System.Globalization;
 
 namespace MoneyUp.Controllers;
 
@@ -16,6 +17,7 @@ public class MovimientosController : Controller
     private const int PageSize = 5;
     private readonly SqlConnectionFactory _connectionFactory;
     private readonly ILogger<MovimientosController> _logger;
+    private readonly MovimientoDataService _movimientoDataService;
 
     private sealed class CategoriaPrincipalResultado
     {
@@ -35,32 +37,451 @@ public class MovimientosController : Controller
         public string? IconoCategoria { get; set; }
     }
 
-    public MovimientosController(SqlConnectionFactory connectionFactory, ILogger<MovimientosController> logger)
+    public MovimientosController(SqlConnectionFactory connectionFactory, MovimientoDataService movimientoDataService, ILogger<MovimientosController> logger)
     {
         _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+        _movimientoDataService = movimientoDataService ?? throw new ArgumentNullException(nameof(movimientoDataService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    [HttpGet]
-    public async Task<IActionResult> Index(int? mes, int? anio, string? busqueda, int? categoria, int pagina = 1)
+    private int? ObtenerUsuarioAutenticadoId()
     {
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!int.TryParse(userIdValue, out var userId))
+        return int.TryParse(userIdValue, out var userId) ? userId : null;
+    }
+
+    private static bool TryParseMontoArgentina(string? rawValue, out decimal monto)
+    {
+        monto = 0m;
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return false;
+        }
+
+        var normalized = rawValue.Trim();
+        normalized = normalized.Replace("$", string.Empty, StringComparison.Ordinal);
+        normalized = normalized.Replace(" ", string.Empty, StringComparison.Ordinal);
+
+        if (normalized.Length == 0)
+        {
+            return false;
+        }
+
+        var hasDot = normalized.Contains('.');
+        var hasComma = normalized.Contains(',');
+
+        if (hasDot && hasComma)
+        {
+            var lastDotIndex = normalized.LastIndexOf('.');
+            var lastCommaIndex = normalized.LastIndexOf(',');
+            var decimalSeparator = lastDotIndex > lastCommaIndex ? '.' : ',';
+            var groupingSeparator = decimalSeparator == '.' ? ',' : '.';
+            normalized = normalized.Replace(groupingSeparator.ToString(), string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace(decimalSeparator, '.');
+        }
+        else if (hasComma)
+        {
+            normalized = normalized.Replace(",", ".", StringComparison.Ordinal);
+        }
+
+        if (normalized.Count(c => c == '.') > 1)
+        {
+            return false;
+        }
+
+        if (!decimal.TryParse(normalized, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out monto))
+        {
+            return false;
+        }
+
+        if (monto <= 0m)
+        {
+            return false;
+        }
+
+        var decimalPlaces = BitConverter.GetBytes(decimal.GetBits(monto)[3])[2];
+        if (decimalPlaces > 2)
+        {
+            return false;
+        }
+
+        return monto <= 9999999999999999.99m;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> RegistrarIngreso()
+    {
+        var userId = ObtenerUsuarioAutenticadoId();
+        if (userId is null)
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return RedirectToAction("IniciarSesion", "Cuenta");
         }
 
-        if (mes is < 1 or > 12)
+        var viewModel = await ConstruirModeloIndexAsync(userId.Value, DateTime.Today.Month, DateTime.Today.Year, null, null, 1);
+        var ingresoModel = new RegistrarIngresoFormViewModel
         {
-            return BadRequest("El mes debe estar entre 1 y 12.");
+            FechaMovimiento = DateTime.Today,
+            Repeticion = "unico",
+            CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasIngresoAsync(userId.Value)
+        };
+
+        ViewData["IngresoForm"] = ingresoModel;
+        ViewData["OpenIngresoForm"] = true;
+        return View("Index", viewModel);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegistrarIngreso(RegistrarIngresoFormViewModel model)
+    {
+        var userId = ObtenerUsuarioAutenticadoId();
+        if (userId is null)
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction("IniciarSesion", "Cuenta");
         }
 
-        if (anio is < 1 or > 9999)
+        model.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasIngresoAsync(userId.Value);
+
+        if (string.IsNullOrWhiteSpace(model.Repeticion))
         {
-            return BadRequest("El año debe estar entre 1 y 9999.");
+            model.Repeticion = "unico";
         }
 
+        decimal? montoParseado = null;
+        if (!TryParseMontoArgentina(model.Monto, out var parsedMonto))
+        {
+            ModelState.AddModelError(nameof(model.Monto), "Ingresá un monto mayor a cero, con máximo dos decimales.");
+        }
+        else
+        {
+            montoParseado = parsedMonto;
+            model.Monto = parsedMonto.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        if (model.IdCategoria is null || model.IdCategoria <= 0)
+        {
+            ModelState.AddModelError(nameof(model.IdCategoria), "Seleccioná una categoría de ingreso.");
+        }
+        else
+        {
+            var categoriaValida = await _movimientoDataService.ObtenerCategoriaIngresoAutorizadaAsync(userId.Value, model.IdCategoria.Value);
+            if (categoriaValida is null)
+            {
+                ModelState.AddModelError(nameof(model.IdCategoria), "La categoría seleccionada no está disponible para este usuario.");
+            }
+        }
+
+        if (!model.FechaMovimiento.HasValue)
+        {
+            ModelState.AddModelError(nameof(model.FechaMovimiento), "La fecha del ingreso es obligatoria.");
+        }
+        else if (model.FechaMovimiento.Value.Date > DateTime.Today)
+        {
+            ModelState.AddModelError(nameof(model.FechaMovimiento), "La fecha del ingreso no puede ser futura.");
+        }
+
+        if (model.Repeticion != "unico")
+        {
+            ModelState.AddModelError(nameof(model.Repeticion), "La repetición de ingresos estará disponible próximamente.");
+        }
+
+        ViewData["IngresoForm"] = model;
+        ViewData["OpenIngresoForm"] = true;
+
+        if (!ModelState.IsValid)
+        {
+            var fechaReferencia = model.FechaMovimiento ?? DateTime.Today;
+            var viewModel = await ConstruirModeloIndexAsync(userId.Value, fechaReferencia.Month, fechaReferencia.Year, null, null, 1);
+
+            var ingresoModel = ViewData["IngresoForm"] as RegistrarIngresoFormViewModel ?? model;
+            ingresoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasIngresoAsync(userId.Value);
+            ViewData["IngresoForm"] = ingresoModel;
+
+            var gastoModel = ViewData["GastoForm"] as RegistrarGastoFormViewModel ?? new RegistrarGastoFormViewModel
+            {
+                FechaMovimiento = DateTime.Today,
+                Repeticion = "unico"
+            };
+            gastoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasGastoAsync(userId.Value);
+            ViewData["GastoForm"] = gastoModel;
+            ViewData["OpenGastoForm"] = true;
+            return View("Index", viewModel);
+        }
+
+        try
+        {
+            await _movimientoDataService.InsertarIngresoAsync(userId.Value, model.IdCategoria!.Value, montoParseado!.Value, model.FechaMovimiento!.Value.Date);
+            TempData["MovimientoExito"] = "Ingreso registrado correctamente";
+            return RedirectToAction(nameof(Index), new { mes = model.FechaMovimiento.Value.Month, anio = model.FechaMovimiento.Value.Year, pagina = 1 });
+        }
+        catch (SqlException ex)
+        {
+            _logger.LogError(ex, "Error SQL al registrar ingreso para el usuario {UserId}.", userId.Value);
+            ModelState.AddModelError(string.Empty, "No pudimos registrar el ingreso en este momento. Intentalo más tarde.");
+            var fechaReferencia = model.FechaMovimiento ?? DateTime.Today;
+            var viewModel = await ConstruirModeloIndexAsync(userId.Value, fechaReferencia.Month, fechaReferencia.Year, null, null, 1);
+
+            var ingresoModel = ViewData["IngresoForm"] as RegistrarIngresoFormViewModel ?? model;
+            ingresoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasIngresoAsync(userId.Value);
+            ViewData["IngresoForm"] = ingresoModel;
+
+            var gastoModel = ViewData["GastoForm"] as RegistrarGastoFormViewModel ?? new RegistrarGastoFormViewModel
+            {
+                FechaMovimiento = DateTime.Today,
+                Repeticion = "unico"
+            };
+            gastoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasGastoAsync(userId.Value);
+            ViewData["GastoForm"] = gastoModel;
+            ViewData["OpenGastoForm"] = true;
+            ViewData["OpenIngresoForm"] = true;
+            return View("Index", viewModel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error inesperado al registrar ingreso para el usuario {UserId}.", userId.Value);
+            ModelState.AddModelError(string.Empty, "No pudimos registrar el ingreso en este momento. Intentalo más tarde.");
+            var fechaReferencia = model.FechaMovimiento ?? DateTime.Today;
+            var viewModel = await ConstruirModeloIndexAsync(userId.Value, fechaReferencia.Month, fechaReferencia.Year, null, null, 1);
+
+            var ingresoModel = ViewData["IngresoForm"] as RegistrarIngresoFormViewModel ?? model;
+            ingresoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasIngresoAsync(userId.Value);
+            ViewData["IngresoForm"] = ingresoModel;
+
+            var gastoModel = ViewData["GastoForm"] as RegistrarGastoFormViewModel ?? new RegistrarGastoFormViewModel
+            {
+                FechaMovimiento = DateTime.Today,
+                Repeticion = "unico"
+            };
+            gastoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasGastoAsync(userId.Value);
+            ViewData["GastoForm"] = gastoModel;
+            ViewData["OpenGastoForm"] = true;
+            ViewData["OpenIngresoForm"] = true;
+            return View("Index", viewModel);
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> RegistrarGasto()
+    {
+        var userId = ObtenerUsuarioAutenticadoId();
+        if (userId is null)
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction("IniciarSesion", "Cuenta");
+        }
+
+        var viewModel = await ConstruirModeloIndexAsync(userId.Value, DateTime.Today.Month, DateTime.Today.Year, null, null, 1);
+        var gastoModel = new RegistrarGastoFormViewModel
+        {
+            FechaMovimiento = DateTime.Today,
+            Repeticion = "unico",
+            CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasGastoAsync(userId.Value)
+        };
+
+        ViewData["GastoForm"] = gastoModel;
+        ViewData["OpenGastoForm"] = true;
+        return View("Index", viewModel);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegistrarGasto(RegistrarGastoFormViewModel model)
+    {
+        var userId = ObtenerUsuarioAutenticadoId();
+        if (userId is null)
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction("IniciarSesion", "Cuenta");
+        }
+
+        model.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasGastoAsync(userId.Value);
+
+        if (string.IsNullOrWhiteSpace(model.Repeticion))
+        {
+            model.Repeticion = "unico";
+        }
+
+        decimal? montoParseado = null;
+        if (!TryParseMontoArgentina(model.Monto, out var parsedMonto))
+        {
+            ModelState.AddModelError(nameof(model.Monto), "Ingresá un monto mayor a cero, con máximo dos decimales.");
+        }
+        else
+        {
+            montoParseado = parsedMonto;
+            model.Monto = parsedMonto.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        if (model.IdCategoria is null || model.IdCategoria <= 0)
+        {
+            ModelState.AddModelError(nameof(model.IdCategoria), "Seleccioná una categoría de gasto.");
+        }
+        else
+        {
+            var categoriaValida = await _movimientoDataService.ObtenerCategoriaGastoAutorizadaAsync(userId.Value, model.IdCategoria.Value);
+            if (categoriaValida is null)
+            {
+                ModelState.AddModelError(nameof(model.IdCategoria), "La categoría seleccionada no está disponible para este usuario.");
+            }
+        }
+
+        if (!model.FechaMovimiento.HasValue)
+        {
+            ModelState.AddModelError(nameof(model.FechaMovimiento), "La fecha del gasto es obligatoria.");
+        }
+        else if (model.FechaMovimiento.Value.Date > DateTime.Today)
+        {
+            ModelState.AddModelError(nameof(model.FechaMovimiento), "La fecha del gasto no puede ser futura.");
+        }
+
+        if (model.Repeticion != "unico")
+        {
+            ModelState.AddModelError(nameof(model.Repeticion), "La repetición de gastos estará disponible próximamente.");
+        }
+
+        ViewData["GastoForm"] = model;
+        ViewData["OpenGastoForm"] = true;
+
+        if (!ModelState.IsValid)
+        {
+            var fechaReferencia = model.FechaMovimiento ?? DateTime.Today;
+            var viewModel = await ConstruirModeloIndexAsync(userId.Value, fechaReferencia.Month, fechaReferencia.Year, null, null, 1);
+
+            var gastoModel = ViewData["GastoForm"] as RegistrarGastoFormViewModel ?? model;
+            gastoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasGastoAsync(userId.Value);
+            ViewData["GastoForm"] = gastoModel;
+
+            var ingresoModel = ViewData["IngresoForm"] as RegistrarIngresoFormViewModel ?? new RegistrarIngresoFormViewModel
+            {
+                FechaMovimiento = DateTime.Today,
+                Repeticion = "unico"
+            };
+            ingresoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasIngresoAsync(userId.Value);
+            ViewData["IngresoForm"] = ingresoModel;
+            ViewData["OpenIngresoForm"] = false;
+            ViewData["OpenGastoForm"] = true;
+            return View("Index", viewModel);
+        }
+
+        try
+        {
+            await _movimientoDataService.InsertarGastoAsync(userId.Value, model.IdCategoria!.Value, montoParseado!.Value, model.FechaMovimiento!.Value.Date);
+            TempData["MovimientoExito"] = "Gasto registrado correctamente";
+            return RedirectToAction(nameof(Index), new { mes = model.FechaMovimiento.Value.Month, anio = model.FechaMovimiento.Value.Year, pagina = 1 });
+        }
+        catch (SqlException ex)
+        {
+            _logger.LogError(ex, "Error SQL al registrar gasto para el usuario {UserId}.", userId.Value);
+            ModelState.AddModelError(string.Empty, "No pudimos registrar el gasto en este momento. Intentalo más tarde.");
+            var fechaReferencia = model.FechaMovimiento ?? DateTime.Today;
+            var viewModel = await ConstruirModeloIndexAsync(userId.Value, fechaReferencia.Month, fechaReferencia.Year, null, null, 1);
+
+            var gastoModel = ViewData["GastoForm"] as RegistrarGastoFormViewModel ?? model;
+            gastoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasGastoAsync(userId.Value);
+            ViewData["GastoForm"] = gastoModel;
+
+            var ingresoModel = ViewData["IngresoForm"] as RegistrarIngresoFormViewModel ?? new RegistrarIngresoFormViewModel
+            {
+                FechaMovimiento = DateTime.Today,
+                Repeticion = "unico"
+            };
+            ingresoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasIngresoAsync(userId.Value);
+            ViewData["IngresoForm"] = ingresoModel;
+            ViewData["OpenIngresoForm"] = false;
+            ViewData["OpenGastoForm"] = true;
+            return View("Index", viewModel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error inesperado al registrar gasto para el usuario {UserId}.", userId.Value);
+            ModelState.AddModelError(string.Empty, "No pudimos registrar el gasto en este momento. Intentalo más tarde.");
+            var fechaReferencia = model.FechaMovimiento ?? DateTime.Today;
+            var viewModel = await ConstruirModeloIndexAsync(userId.Value, fechaReferencia.Month, fechaReferencia.Year, null, null, 1);
+
+            var gastoModel = ViewData["GastoForm"] as RegistrarGastoFormViewModel ?? model;
+            gastoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasGastoAsync(userId.Value);
+            ViewData["GastoForm"] = gastoModel;
+
+            var ingresoModel = ViewData["IngresoForm"] as RegistrarIngresoFormViewModel ?? new RegistrarIngresoFormViewModel
+            {
+                FechaMovimiento = DateTime.Today,
+                Repeticion = "unico"
+            };
+            ingresoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasIngresoAsync(userId.Value);
+            ViewData["IngresoForm"] = ingresoModel;
+            ViewData["OpenIngresoForm"] = false;
+            ViewData["OpenGastoForm"] = true;
+            return View("Index", viewModel);
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Eliminar(int idMovimiento, int? mes, int? anio, string? busqueda, int? categoria, int pagina = 1)
+    {
+        var userId = ObtenerUsuarioAutenticadoId();
+        if (userId is null)
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction("IniciarSesion", "Cuenta");
+        }
+
+        if (idMovimiento <= 0)
+        {
+            TempData["MovimientoError"] = "No pudimos eliminar este movimiento en este momento.";
+            return RedirectToAction(nameof(Index), new { mes, anio, busqueda, categoria, pagina });
+        }
+
+        try
+        {
+            var movimiento = await _movimientoDataService.ObtenerMovimientoParaEliminarAsync(userId.Value, idMovimiento);
+            if (movimiento is null)
+            {
+                TempData["MovimientoError"] = "No pudimos eliminar este movimiento en este momento.";
+                return RedirectToAction(nameof(Index), new { mes, anio, busqueda, categoria, pagina });
+            }
+
+            var filasAfectadas = await _movimientoDataService.EliminarMovimientoAsync(userId.Value, idMovimiento);
+            if (filasAfectadas <= 0)
+            {
+                TempData["MovimientoError"] = "No pudimos eliminar este movimiento en este momento.";
+                return RedirectToAction(nameof(Index), new { mes, anio, busqueda, categoria, pagina });
+            }
+
+            var mesDestino = mes ?? DateTime.Today.Month;
+            var anioDestino = anio ?? DateTime.Today.Year;
+            var paginaActualizada = pagina > 0 ? pagina : 1;
+            var estadoActual = await ConstruirModeloIndexAsync(userId.Value, mesDestino, anioDestino, busqueda, categoria, paginaActualizada);
+            if (estadoActual.TotalResultados > 0)
+            {
+                paginaActualizada = Math.Clamp(paginaActualizada, 1, estadoActual.TotalPaginas);
+            }
+            else
+            {
+                paginaActualizada = 1;
+            }
+
+            TempData["MovimientoExito"] = "Movimiento eliminado correctamente";
+            return RedirectToAction(nameof(Index), new { mes = mesDestino, anio = anioDestino, busqueda, categoria, pagina = paginaActualizada });
+        }
+        catch (SqlException ex)
+        {
+            _logger.LogError(ex, "Error SQL al eliminar movimiento {IdMovimiento} para el usuario {UserId}.", idMovimiento, userId.Value);
+            TempData["MovimientoError"] = "No pudimos eliminar este movimiento en este momento.";
+            return RedirectToAction(nameof(Index), new { mes, anio, busqueda, categoria, pagina });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error inesperado al eliminar movimiento {IdMovimiento} para el usuario {UserId}.", idMovimiento, userId.Value);
+            TempData["MovimientoError"] = "No pudimos eliminar este movimiento en este momento.";
+            return RedirectToAction(nameof(Index), new { mes, anio, busqueda, categoria, pagina });
+        }
+    }
+
+    private async Task<MovimientosIndexViewModel> ConstruirModeloIndexAsync(int userId, int? mes, int? anio, string? busqueda, int? categoria, int pagina)
+    {
         var selectedMonth = mes ?? DateTime.Today.Month;
         var selectedYear = anio ?? DateTime.Today.Year;
         var currentPage = pagina > 0 ? pagina : 1;
@@ -117,26 +538,6 @@ public class MovimientosController : Controller
                 new { IdUsuario = userId, InicioMes = dateStart, FinMes = dateEnd });
             model.GastosMes = gastosMes ?? 0m;
 
-            var aportes = await connection.QuerySingleOrDefaultAsync<decimal?>(@"
-                SELECT COALESCE(SUM(mm.Monto), 0)
-                FROM dbo.MovimientoMeta mm
-                INNER JOIN dbo.Meta m ON m.IdMeta = mm.IdMeta
-                WHERE m.IdUsuario = @IdUsuario
-                  AND mm.TipoOperacion = 'Aporte'
-                  AND mm.FechaMovimientoMeta >= @InicioMes
-                  AND mm.FechaMovimientoMeta < @FinMes;",
-                new { IdUsuario = userId, InicioMes = dateStart, FinMes = dateEnd });
-
-            var retiros = await connection.QuerySingleOrDefaultAsync<decimal?>(@"
-                SELECT COALESCE(SUM(mm.Monto), 0)
-                FROM dbo.MovimientoMeta mm
-                INNER JOIN dbo.Meta m ON m.IdMeta = mm.IdMeta
-                WHERE m.IdUsuario = @IdUsuario
-                  AND mm.TipoOperacion = 'Retiro'
-                  AND mm.FechaMovimientoMeta >= @InicioMes
-                  AND mm.FechaMovimientoMeta < @FinMes;",
-                new { IdUsuario = userId, InicioMes = dateStart, FinMes = dateEnd });
-
             var saldoHistorico = await connection.QuerySingleOrDefaultAsync<decimal?>(@"
                 SELECT 
                     (COALESCE((SELECT SUM(Monto) FROM dbo.Movimiento WHERE IdUsuario = @IdUsuario AND TipoMovimiento = 1), 0)
@@ -188,15 +589,8 @@ public class MovimientosController : Controller
 
                 if (model.PresupuestoLimite == 0m)
                 {
-                    model.PresupuestoUtilizadoPorcentaje = model.PresupuestoGastado > 0m ? 0m : 0m;
-                    if (model.PresupuestoGastado > 0m)
-                    {
-                        model.PresupuestoMensaje = $"Superaste tu presupuesto por {model.PresupuestoGastado:C}.";
-                    }
-                    else
-                    {
-                        model.PresupuestoMensaje = "No registraste gastos para este mes.";
-                    }
+                    model.PresupuestoUtilizadoPorcentaje = 0m;
+                    model.PresupuestoMensaje = model.PresupuestoGastado > 0m ? $"Superaste tu presupuesto por {model.PresupuestoGastado:C}." : "No registraste gastos para este mes.";
                 }
                 else
                 {
@@ -323,11 +717,72 @@ public class MovimientosController : Controller
             model.MostrandoDesde = totalCount == 0 ? 0 : pageSkip + 1;
             model.MostrandoHasta = totalCount == 0 ? 0 : Math.Min(pageSkip + PageSize, totalCount);
 
-            return View(model);
+            return model;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al cargar movimientos del usuario {UserId}.", userId);
+            throw;
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Index(int? mes, int? anio, string? busqueda, int? categoria, int pagina = 1)
+    {
+        var userId = ObtenerUsuarioAutenticadoId();
+        if (userId is null)
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction("IniciarSesion", "Cuenta");
+        }
+
+        if (mes is < 1 or > 12)
+        {
+            return BadRequest("El mes debe estar entre 1 y 12.");
+        }
+
+        if (anio is < 1 or > 9999)
+        {
+            return BadRequest("El año debe estar entre 1 y 9999.");
+        }
+
+        if (TempData["MovimientoExito"] is string exito)
+        {
+            ViewData["MovimientoExito"] = exito;
+        }
+
+        ViewData["IngresoForm"] ??= new RegistrarIngresoFormViewModel
+        {
+            FechaMovimiento = DateTime.Today,
+            Repeticion = "unico"
+        };
+
+        ViewData["OpenIngresoForm"] ??= false;
+
+        var ingresoModel = ViewData["IngresoForm"] as RegistrarIngresoFormViewModel ?? new RegistrarIngresoFormViewModel
+        {
+            FechaMovimiento = DateTime.Today,
+            Repeticion = "unico"
+        };
+        ingresoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasIngresoAsync(userId.Value);
+        ViewData["IngresoForm"] = ingresoModel;
+
+        var gastoModel = ViewData["GastoForm"] as RegistrarGastoFormViewModel ?? new RegistrarGastoFormViewModel
+        {
+            FechaMovimiento = DateTime.Today,
+            Repeticion = "unico"
+        };
+        gastoModel.CategoriasDisponibles = await _movimientoDataService.ObtenerCategoriasGastoAsync(userId.Value);
+        ViewData["GastoForm"] = gastoModel;
+
+        try
+        {
+            var model = await ConstruirModeloIndexAsync(userId.Value, mes, anio, busqueda, categoria, pagina);
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al cargar movimientos del usuario {UserId}.", userId.Value);
             return Problem("No pudimos cargar tus movimientos en este momento.", statusCode: 500);
         }
     }

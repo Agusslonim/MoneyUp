@@ -65,3 +65,31 @@ public class MovimientoListadoItemViewModel
     public string IconoCategoria { get; set; } = "tarjeta";
     public bool TieneAccionesDisponibles { get; set; }
 }
+
+public class MovimientoEliminarDetalleViewModel
+{
+    public int IdMovimiento { get; set; }
+    public int IdUsuario { get; set; }
+    public bool TipoMovimiento { get; set; }
+    public decimal Monto { get; set; }
+    public string Descripcion { get; set; } = string.Empty;
+    public string Categoria { get; set; } = string.Empty;
+}
+
+public class RegistrarIngresoFormViewModel
+{
+    public string? Monto { get; set; }
+    public int? IdCategoria { get; set; }
+    public DateTime? FechaMovimiento { get; set; }
+    public string Repeticion { get; set; } = "unico";
+    public List<CategoriaFiltroViewModel> CategoriasDisponibles { get; set; } = new();
+}
+
+public class RegistrarGastoFormViewModel
+{
+    public string? Monto { get; set; }
+    public int? IdCategoria { get; set; }
+    public DateTime? FechaMovimiento { get; set; }
+    public string Repeticion { get; set; } = "unico";
+    public List<CategoriaFiltroViewModel> CategoriasDisponibles { get; set; } = new();
+}

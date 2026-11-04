@@ -11,6 +11,33 @@
         "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
     };
+
+    var ingresoForm = ViewData["IngresoForm"] as MoneyUp.Models.RegistrarIngresoFormViewModel ?? new MoneyUp.Models.RegistrarIngresoFormViewModel
+    {
+        FechaMovimiento = DateTime.Today,
+        Repeticion = "unico"
+    };
+    var openIngresoForm = ViewData["OpenIngresoForm"] is bool isOpenIngresoForm && isOpenIngresoForm;
+    var ingresoCategorias = ingresoForm.CategoriasDisponibles ?? new List<MoneyUp.Models.CategoriaFiltroViewModel>();
+    var hasServerErrors = ViewData.ModelState.ErrorCount > 0;
+
+    var gastoForm = ViewData["GastoForm"] as MoneyUp.Models.RegistrarGastoFormViewModel ?? new MoneyUp.Models.RegistrarGastoFormViewModel
+    {
+        FechaMovimiento = DateTime.Today,
+        Repeticion = "unico"
+    };
+    var openGastoForm = ViewData["OpenGastoForm"] is bool isOpenGastoForm && isOpenGastoForm;
+    var gastoCategorias = gastoForm.CategoriasDisponibles ?? new List<MoneyUp.Models.CategoriaFiltroViewModel>();
+}
+
+@if (TempData["MovimientoExito"] is string movimientoExito)
+{
+    <div class="movement-success-banner" role="status" aria-live="polite">@movimientoExito</div>
+}
+
+@if (TempData["MovimientoError"] is string movimientoError)
+{
+    <div class="movement-error-banner" role="alert" aria-live="assertive">@movimientoError</div>
 }
 
 <section class="movimientos-page">
@@ -20,7 +47,7 @@
                 <h1>Movimientos</h1>
                 <p>Registrá y organizá todos tus movimientos.</p>
             </div>
-            <button type="button" class="btn-primary" disabled aria-disabled="true" title="Disponible próximamente">
+            <button type="button" class="btn-primary" data-open-movement-modal aria-label="Abrir nuevo movimiento">
                 + Nuevo movimiento
             </button>
         </header>
@@ -147,7 +174,16 @@
                                         <td><span class="type-badge @(item.TipoMovimiento == 1 ? "ingreso" : "gasto")">@item.TipoMovimientoTexto</span></td>
                                         <td class="amount @(item.TipoMovimiento == 1 ? "income" : "expense")">@(item.TipoMovimiento == 1 ? "+" : "−") @importe</td>
                                         <td>
-                                            <button type="button" class="table-action" disabled aria-disabled="true" title="Disponible próximamente">⋯</button>
+                                            <div class="table-action-group">
+                                                <button type="button" class="table-action" aria-label="Más opciones para @item.Descripcion" data-movement-menu-button data-movement-id="@item.IdMovimiento" data-movement-name="@item.Descripcion" data-movement-type="@item.TipoMovimientoTexto" data-movement-amount="@item.Monto.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" aria-expanded="false">
+                                                    ⋯
+                                                </button>
+                                                <div class="table-action-menu" role="menu" hidden>
+                                                    <button type="button" class="table-action-item" data-delete-movement data-movement-id="@item.IdMovimiento" data-movement-name="@item.Descripcion" data-movement-type="@item.TipoMovimientoTexto" data-movement-amount="@item.Monto.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">
+                                                        Eliminar movimiento
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                 }
@@ -157,7 +193,7 @@
                 </div>
 
                 <div class="pagination-bar">
-                    <span>@(Model.TotalResultados == 0 ? "Mostrando 0 de 0 movimientos" : $"Mostrando {Model.MostrandoDesde} de {Model.TotalResultados} movimientos")</span>
+                    <span>@(Model.TotalResultados == 0 ? "Mostrando 0 de 0 movimientos" : $"Mostrando {Model.Movimientos.Count} de {Model.TotalResultados} movimientos")</span>
                     <div class="pagination-controls">
                         @if (Model.PaginaActual > 1)
                         {
@@ -193,15 +229,34 @@
                     </div>
                     @if (Model.GastosPorCategoria.Any())
                     {
+                        var palette = new[] { "#7C3AED", "#7ADFF0", "#FFB067", "#A78BFA", "#60D5ED", "#C4B5FD", "#FBBF24", "#F59E0B" };
+                        var colorByCategoriaId = Model.GastosPorCategoria
+                            .OrderBy(x => x.IdCategoria)
+                            .Select((item, index) => new { item.IdCategoria, Color = palette[index % palette.Length] })
+                            .ToDictionary(x => x.IdCategoria, x => x.Color);
+
+                        foreach (var item in Model.GastosPorCategoria)
+                        {
+                            item.Color = colorByCategoriaId.TryGetValue(item.IdCategoria, out var categoryColor) ? categoryColor : item.Color;
+                        }
+
+                        var donutSegments = new List<(decimal Start, decimal End, string Color)>();
+                        var runningTotal = 0m;
+                        foreach (var item in Model.GastosPorCategoria)
+                        {
+                            var start = Model.GastosMes == 0m ? 0m : (runningTotal / Model.GastosMes) * 100m;
+                            var end = Model.GastosMes == 0m ? 0m : ((runningTotal + item.Monto) / Model.GastosMes) * 100m;
+                            donutSegments.Add((start, end, item.Color));
+                            runningTotal += item.Monto;
+                        }
+
+                        var donutBackground = donutSegments.Count == 0
+                            ? "conic-gradient(#F3F4F6 0 100%)"
+                            : "conic-gradient(" + string.Join(", ", donutSegments.Select(segment =>
+                                $"{segment.Color} {segment.Start.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)}% {segment.End.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)}%")) + ")";
+
                         <div class="donut-wrap">
-                            <div class="donut-chart" aria-label="Resumen de gastos del mes">
-                                @for (var i = 0; i < Model.GastosPorCategoria.Count; i++)
-                                {
-                                    var item = Model.GastosPorCategoria[i];
-                                    var color = item.Color;
-                                    var length = (item.Porcentaje / 100m) * 100;
-                                    <span class="donut-segment" style="background: conic-gradient(from @(i * 30)deg @(color) 0 @(length)%, transparent @(length)% 100%);"></span>
-                                }
+                            <div class="donut-chart" aria-label="Resumen de gastos del mes" style="background: @donutBackground;">
                             </div>
                             <div class="donut-total">
                                 <strong>@Model.GastosMes.ToString("C", new System.Globalization.CultureInfo("es-AR"))</strong>
@@ -258,3 +313,711 @@
         </div>
     </div>
 </section>
+
+<dialog id="nuevo-movimiento-modal" class="movement-type-dialog" aria-labelledby="nuevo-movimiento-title" aria-describedby="nuevo-movimiento-description" data-open-form="@((openIngresoForm || openGastoForm) ? "true" : "false")" data-open-form-type="@((openGastoForm) ? "gasto" : (openIngresoForm ? "ingreso" : "selector"))" data-has-server-errors="@((hasServerErrors) ? "true" : "false")">
+    <div class="movement-modal-panel">
+        <button type="button" class="movement-modal-close" aria-label="Cerrar nuevo movimiento" data-close-movement-modal>
+            <span aria-hidden="true">×</span>
+        </button>
+
+        <div class="movement-step movement-step-selector" data-step="selector">
+            <header class="movement-modal-header">
+                <h2 id="nuevo-movimiento-title">Nuevo movimiento</h2>
+                <p id="nuevo-movimiento-description">Elegí qué tipo de movimiento querés registrar.</p>
+            </header>
+
+            <div class="movement-card-grid" role="list" aria-label="Tipos de movimiento">
+                <article class="movement-choice-card expense" role="listitem">
+                    <span class="movement-choice-badge expense">SALIDA DE DINERO</span>
+                    <h3>Registrar gasto</h3>
+                    <p>Pagos, compras y servicios.</p>
+                    <button type="button" class="movement-choice-button expense" data-choice="gasto">
+                        Elegir gasto
+                    </button>
+                </article>
+
+                <article class="movement-choice-card income" role="listitem">
+                    <span class="movement-choice-badge income">ENTRADA DE DINERO</span>
+                    <h3>Registrar ingreso</h3>
+                    <p>Sueldos, ventas y cobros.</p>
+                    <button type="button" class="movement-choice-button income" data-choice="ingreso">
+                        Elegir ingreso
+                    </button>
+                </article>
+            </div>
+
+            <div class="movement-modal-actions">
+                <button type="button" class="btn-secondary btn-modal-cancel" data-close-movement-modal>
+                    Cancelar
+                </button>
+            </div>
+
+            <p class="movement-message" id="movement-message" aria-live="polite" role="status" hidden></p>
+        </div>
+
+        <div class="movement-step movement-step-ingreso" data-step="ingreso" hidden>
+            <div class="movement-form-topbar">
+                <button type="button" class="movement-back-link" data-back-to-selector>
+                    <span aria-hidden="true">←</span> Volver
+                </button>
+            </div>
+
+            <header class="movement-modal-header movement-form-header">
+                <h2 id="movimiento-ingreso-title">Registrar ingreso</h2>
+                <p id="movimiento-ingreso-description">Completá los datos para guardar este movimiento.</p>
+            </header>
+
+            <form id="movimiento-ingreso-form" data-form-kind="ingreso" method="post" asp-controller="Movimientos" asp-action="RegistrarIngreso" class="movement-ingreso-form" novalidate>
+                @Html.AntiForgeryToken()
+
+                <div class="movement-form-card">
+                    <div class="movement-form-section-head">
+                        <h3>Datos del ingreso</h3>
+                        <p>Ingresá la información principal del movimiento.</p>
+                    </div>
+
+                    <div class="movement-field movement-field-amount">
+                        <label for="Monto">Monto</label>
+                        <div class="movement-amount-input-wrap">
+                            <span aria-hidden="true">$</span>
+                            <input id="Monto" name="Monto" type="text" inputmode="decimal" autocomplete="off" value="@(ingresoForm.Monto ?? string.Empty)" placeholder="1500,50" aria-invalid="@(ViewData.ModelState["Monto"]?.Errors.Count > 0 ? "true" : "false")" />
+                        </div>
+                        @if (ViewData.ModelState.TryGetValue("Monto", out var montoErrors) && montoErrors.Errors.Count > 0)
+                        {
+                            <span class="field-validation-error">@montoErrors.Errors[0].ErrorMessage</span>
+                        }
+                    </div>
+
+                    <div class="movement-field">
+                        <label for="IdCategoria">Categoría</label>
+                        <select id="IdCategoria" name="IdCategoria" aria-invalid="@(ViewData.ModelState["IdCategoria"]?.Errors.Count > 0 ? "true" : "false")">
+                            <option value="">Seleccionar categoría</option>
+                            @foreach (var categoria in ingresoCategorias)
+                            {
+                                var selected = ingresoForm.IdCategoria.HasValue && ingresoForm.IdCategoria.Value == categoria.IdCategoria;
+                                <option value="@categoria.IdCategoria" selected="@(selected ? "selected" : null)">@categoria.NombreCategoria</option>
+                            }
+                        </select>
+                        @if (ViewData.ModelState.TryGetValue("IdCategoria", out var categoriaErrors) && categoriaErrors.Errors.Count > 0)
+                        {
+                            <span class="field-validation-error">@categoriaErrors.Errors[0].ErrorMessage</span>
+                        }
+                        else if (ingresoCategorias.Count == 0)
+                        {
+                            <span class="field-validation-error">No hay categorías de ingreso disponibles para este usuario.</span>
+                        }
+                    </div>
+
+                    <div class="movement-field">
+                        <label for="FechaMovimiento">Fecha del ingreso</label>
+                        <input id="FechaMovimiento" name="FechaMovimiento" type="date" value="@(ingresoForm.FechaMovimiento.HasValue ? ingresoForm.FechaMovimiento.Value.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd"))" aria-invalid="@(ViewData.ModelState["FechaMovimiento"]?.Errors.Count > 0 ? "true" : "false")" />
+                        @if (ViewData.ModelState.TryGetValue("FechaMovimiento", out var fechaErrors) && fechaErrors.Errors.Count > 0)
+                        {
+                            <span class="field-validation-error">@fechaErrors.Errors[0].ErrorMessage</span>
+                        }
+                    </div>
+
+                    <fieldset class="movement-repeat">
+                        <legend>¿Este ingreso se repite?</legend>
+                        <label class="movement-repeat-option selected">
+                            <input type="radio" name="Repeticion" value="unico" checked="@(ingresoForm.Repeticion == "unico" ? "checked" : null)" />
+                            <span>No, es un ingreso único</span>
+                        </label>
+
+                        <label class="movement-repeat-option disabled">
+                            <input type="radio" name="Repeticion" value="semanal" disabled />
+                            <span>Semanal</span>
+                        </label>
+
+                        <label class="movement-repeat-option disabled">
+                            <input type="radio" name="Repeticion" value="mensual" disabled />
+                            <span>Mensual</span>
+                        </label>
+
+                        <label class="movement-repeat-option disabled">
+                            <input type="radio" name="Repeticion" value="anual" disabled />
+                            <span>Anual</span>
+                        </label>
+
+                        <p class="movement-repeat-note">La repetición estará disponible próximamente.</p>
+                    </fieldset>
+                </div>
+
+                <div class="movement-form-footer">
+                    <button type="button" class="btn-secondary" data-close-movement-modal>Cancelar</button>
+                    <button type="submit" class="btn-primary movement-submit">Guardar ingreso</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="movement-step movement-step-gasto" data-step="gasto" hidden>
+            <div class="movement-form-topbar">
+                <button type="button" class="movement-back-link" data-back-to-selector>
+                    <span aria-hidden="true">←</span> Volver
+                </button>
+            </div>
+
+            <header class="movement-modal-header movement-form-header">
+                <h2 id="movimiento-gasto-title">Registrar gasto</h2>
+                <p id="movimiento-gasto-description">Completá los datos para guardar este movimiento.</p>
+            </header>
+
+            <form id="movimiento-gasto-form" data-form-kind="gasto" method="post" asp-controller="Movimientos" asp-action="RegistrarGasto" class="movement-gasto-form" novalidate>
+                @Html.AntiForgeryToken()
+
+                <div class="movement-form-card">
+                    <div class="movement-form-section-head">
+                        <h3>Datos del gasto</h3>
+                        <p>Ingresá la información principal del movimiento.</p>
+                    </div>
+
+                    <div class="movement-field movement-field-amount">
+                        <label for="GastoMonto">¿Cuánto gastaste?</label>
+                        <div class="movement-amount-input-wrap gasto-amount-input-wrap">
+                            <span aria-hidden="true">$</span>
+                            <input id="GastoMonto" name="Monto" type="text" inputmode="decimal" autocomplete="off" value="@(gastoForm.Monto ?? string.Empty)" placeholder="0,00" aria-invalid="@(ViewData.ModelState["Monto"]?.Errors.Count > 0 ? "true" : "false")" />
+                        </div>
+                        @if (ViewData.ModelState.TryGetValue("Monto", out var gastoMontoErrors) && gastoMontoErrors.Errors.Count > 0)
+                        {
+                            <span class="field-validation-error">@gastoMontoErrors.Errors[0].ErrorMessage</span>
+                        }
+                    </div>
+
+                    <div class="movement-field">
+                        <label for="GastoIdCategoria">Categoría</label>
+                        <select id="GastoIdCategoria" name="IdCategoria" aria-invalid="@(ViewData.ModelState["IdCategoria"]?.Errors.Count > 0 ? "true" : "false")">
+                            <option value="">Seleccionar categoría</option>
+                            @foreach (var categoria in gastoCategorias)
+                            {
+                                var selected = gastoForm.IdCategoria.HasValue && gastoForm.IdCategoria.Value == categoria.IdCategoria;
+                                <option value="@categoria.IdCategoria" selected="@(selected ? "selected" : null)">@categoria.NombreCategoria</option>
+                            }
+                        </select>
+                        @if (ViewData.ModelState.TryGetValue("IdCategoria", out var gastoCategoriaErrors) && gastoCategoriaErrors.Errors.Count > 0)
+                        {
+                            <span class="field-validation-error">@gastoCategoriaErrors.Errors[0].ErrorMessage</span>
+                        }
+                        else if (gastoCategorias.Count == 0)
+                        {
+                            <span class="field-validation-error">No hay categorías de gasto disponibles para este usuario.</span>
+                        }
+                    </div>
+
+                    <div class="movement-field">
+                        <label for="GastoFechaMovimiento">Fecha del gasto</label>
+                        <input id="GastoFechaMovimiento" name="FechaMovimiento" type="date" value="@(gastoForm.FechaMovimiento.HasValue ? gastoForm.FechaMovimiento.Value.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd"))" aria-invalid="@(ViewData.ModelState["FechaMovimiento"]?.Errors.Count > 0 ? "true" : "false")" />
+                        @if (ViewData.ModelState.TryGetValue("FechaMovimiento", out var gastoFechaErrors) && gastoFechaErrors.Errors.Count > 0)
+                        {
+                            <span class="field-validation-error">@gastoFechaErrors.Errors[0].ErrorMessage</span>
+                        }
+                    </div>
+
+                    <fieldset class="movement-repeat">
+                        <legend>¿Este gasto se repite?</legend>
+                        <label class="movement-repeat-option selected">
+                            <input type="radio" name="Repeticion" value="unico" checked="@(gastoForm.Repeticion == "unico" ? "checked" : null)" />
+                            <span>No, es un gasto único</span>
+                        </label>
+
+                        <label class="movement-repeat-option disabled">
+                            <input type="radio" name="Repeticion" value="semanal" disabled />
+                            <span>Semanal</span>
+                        </label>
+
+                        <label class="movement-repeat-option disabled">
+                            <input type="radio" name="Repeticion" value="mensual" disabled />
+                            <span>Mensual</span>
+                        </label>
+
+                        <label class="movement-repeat-option disabled">
+                            <input type="radio" name="Repeticion" value="anual" disabled />
+                            <span>Anual</span>
+                        </label>
+
+                        <p class="movement-repeat-note">La repetición estará disponible próximamente.</p>
+                    </fieldset>
+                </div>
+
+                <div class="movement-form-footer">
+                    <button type="button" class="btn-secondary" data-close-movement-modal>Cancelar</button>
+                    <button type="submit" class="btn-primary movement-submit gasto-submit">Guardar gasto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="delete-movement-dialog" class="delete-movement-dialog" aria-labelledby="delete-movimiento-title" aria-describedby="delete-movimiento-description">
+    <div class="delete-movement-panel">
+        <button type="button" class="movement-modal-close" aria-label="Cerrar eliminación de movimiento" data-close-delete-dialog>
+            <span aria-hidden="true">×</span>
+        </button>
+
+        <div class="delete-movement-content">
+            <div class="delete-movement-icon" aria-hidden="true">!</div>
+            <h2 id="delete-movimiento-title">Eliminar movimiento</h2>
+            <p id="delete-movimiento-description" class="delete-movement-question">¿Seguro que querés eliminar «<span data-delete-movement-name>movimiento</span>»?</p>
+            <p class="delete-movement-warning">Esta acción no se puede deshacer.</p>
+            <div class="delete-movement-info">
+                <span class="delete-movement-info-label">Efecto en el saldo</span>
+                <p data-delete-movement-impact>Al eliminar este gasto, tu saldo disponible aumentará en $0.</p>
+            </div>
+        </div>
+
+        <form id="delete-movement-form" method="post" asp-controller="Movimientos" asp-action="Eliminar" class="delete-movement-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="idMovimiento" value="" />
+            <input type="hidden" name="mes" value="@Model.Mes" />
+            <input type="hidden" name="anio" value="@Model.Anio" />
+            <input type="hidden" name="busqueda" value="@Model.Busqueda" />
+            <input type="hidden" name="categoria" value="@(Model.CategoriaSeleccionadaId ?? 0)" />
+            <input type="hidden" name="pagina" value="@Model.PaginaActual" />
+
+            <div class="movement-form-footer delete-form-footer">
+                <button type="button" class="btn-secondary" data-close-delete-dialog>Cancelar</button>
+                <button type="submit" class="btn-danger delete-submit" data-delete-submit>Eliminar movimiento</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+@section Scripts {
+    <script>
+        (() => {
+            const trigger = document.querySelector("[data-open-movement-modal]");
+            const dialog = document.getElementById("nuevo-movimiento-modal");
+            if (!trigger || !dialog) {
+                return;
+            }
+
+            const selectorStep = dialog.querySelector("[data-step='selector']");
+            const ingresoStep = dialog.querySelector("[data-step='ingreso']");
+            const gastoStep = dialog.querySelector("[data-step='gasto']");
+            const ingresoFormElement = dialog.querySelector("#movimiento-ingreso-form");
+            const gastoFormElement = dialog.querySelector("#movimiento-gasto-form");
+            const form = ingresoFormElement;
+            const closeButtons = dialog.querySelectorAll("[data-close-movement-modal]");
+            const backButtons = dialog.querySelectorAll("[data-back-to-selector]");
+            const choiceButtons = dialog.querySelectorAll("[data-choice]");
+            const message = dialog.querySelector("#movement-message");
+            const focusableSelector = [
+                "button:not([disabled])",
+                "[href]",
+                "input:not([disabled])",
+                "select:not([disabled])",
+                "textarea:not([disabled])",
+                "[tabindex]:not([tabindex='-1'])"
+            ].join(", ");
+
+            const getActiveStep = () => {
+                if (gastoStep && !gastoStep.hidden) {
+                    return gastoStep;
+                }
+                if (ingresoStep && !ingresoStep.hidden) {
+                    return ingresoStep;
+                }
+                return selectorStep;
+            };
+
+            const getActiveForm = () => {
+                const kind = dialog.dataset.openFormType || "ingreso";
+                return kind === "gasto" ? gastoFormElement : ingresoFormElement;
+            };
+
+            const resetFormState = (targetForm) => {
+                if (!targetForm) {
+                    return;
+                }
+
+                targetForm.reset();
+
+                const amountInput = targetForm.querySelector("input[name='Monto']");
+                if (amountInput) {
+                    amountInput.value = "";
+                }
+
+                const categoryInput = targetForm.querySelector("select[name='IdCategoria']");
+                if (categoryInput) {
+                    categoryInput.value = "";
+                }
+
+                const dateInput = targetForm.querySelector("input[name='FechaMovimiento']");
+                if (dateInput) {
+                    const formatLocalDate = (date) => {
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, "0");
+                        const day = String(date.getDate()).padStart(2, "0");
+                        return `${year}-${month}-${day}`;
+                    };
+
+                    dateInput.value = formatLocalDate(new Date());
+                }
+
+                const radioUnique = targetForm.querySelector("input[name='Repeticion'][value='unico']");
+                if (radioUnique) {
+                    radioUnique.checked = true;
+                }
+
+                targetForm.querySelectorAll(".field-validation-error").forEach((error) => error.remove());
+
+                targetForm.querySelectorAll("[aria-invalid]").forEach((field) => {
+                    field.setAttribute("aria-invalid", "false");
+                });
+
+                targetForm.querySelectorAll(".input-validation-error, .field-validation-error, .validation-summary-errors").forEach((element) => {
+                    element.classList.remove("input-validation-error", "field-validation-error", "validation-summary-errors");
+                });
+
+                const submitButton = targetForm.querySelector("button[type='submit']");
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.removeAttribute("aria-disabled");
+                }
+            };
+
+            const hideMessage = () => {
+                if (!message) {
+                    return;
+                }
+                message.textContent = "";
+                message.hidden = true;
+            };
+
+            const scrollStepToTop = () => {
+                const panel = dialog.querySelector(".movement-modal-panel");
+                if (panel) {
+                    panel.scrollTop = 0;
+                }
+            };
+
+            const showSelector = () => {
+                if (selectorStep) selectorStep.hidden = false;
+                if (ingresoStep) ingresoStep.hidden = true;
+                if (gastoStep) gastoStep.hidden = true;
+                dialog.setAttribute("aria-labelledby", "nuevo-movimiento-title");
+                dialog.setAttribute("aria-describedby", "nuevo-movimiento-description");
+                hideMessage();
+                scrollStepToTop();
+
+                if (dialog.dataset.openForm === "true" && dialog.dataset.hasServerErrors === "true") {
+                    showForm(dialog.dataset.openFormType === "gasto" ? "gasto" : "ingreso");
+                    return;
+                }
+
+                if (selectorStep) {
+                    const firstSelectorButton = selectorStep.querySelector("button:not([disabled])");
+                    if (firstSelectorButton) {
+                        firstSelectorButton.focus();
+                    }
+                }
+            };
+
+            const showForm = (kind = "ingreso") => {
+                if (selectorStep) selectorStep.hidden = true;
+                if (ingresoStep) ingresoStep.hidden = kind !== "ingreso";
+                if (gastoStep) gastoStep.hidden = kind !== "gasto";
+
+                const selectedStep = kind === "gasto" ? gastoStep : ingresoStep;
+                const selectedForm = kind === "gasto" ? gastoFormElement : ingresoFormElement;
+                dialog.dataset.openFormType = kind;
+                dialog.setAttribute("aria-labelledby", kind === "gasto" ? "movimiento-gasto-title" : "movimiento-ingreso-title");
+                dialog.setAttribute("aria-describedby", kind === "gasto" ? "movimiento-gasto-description" : "movimiento-ingreso-description");
+                scrollStepToTop();
+
+                const firstField = selectedForm?.querySelector("input, select, button");
+                if (firstField) {
+                    firstField.focus();
+                }
+
+                if (selectedStep) {
+                    const activeField = selectedStep.querySelector("input, select, button:not([data-close-movement-modal])");
+                    if (activeField) {
+                        activeField.focus();
+                    }
+                }
+            };
+
+            const closeDialog = () => {
+                if (!dialog.open) {
+                    return;
+                }
+                dialog.close();
+                hideMessage();
+                document.body.style.overflow = "";
+
+                dialog.dataset.openForm = "false";
+                dialog.dataset.openFormType = "selector";
+                dialog.dataset.hasServerErrors = "false";
+
+                if (ingresoFormElement) {
+                    resetFormState(ingresoFormElement);
+                }
+                if (gastoFormElement) { 
+                    resetFormState(gastoFormElement);
+                }
+                showSelector();
+                trigger.focus();
+            };
+
+            const openDialog = () => {
+                if (dialog.open) {
+                    return;
+                }
+
+                const serverErrorState = dialog.dataset.openForm === "true" && dialog.dataset.hasServerErrors === "true";
+                if (serverErrorState) {
+                    dialog.showModal();
+                    document.body.style.overflow = "hidden";
+                    showForm(dialog.dataset.openFormType === "gasto" ? "gasto" : "ingreso");
+                    return;
+                }
+
+                dialog.dataset.openForm = "false";
+                dialog.dataset.openFormType = "selector";
+                dialog.dataset.hasServerErrors = "false";
+                if (ingresoFormElement) {
+                    resetFormState(ingresoFormElement);
+                }
+                if (gastoFormElement) {
+                    resetFormState(gastoFormElement);
+                }
+                dialog.showModal();
+                document.body.style.overflow = "hidden";
+                showSelector();
+            };
+
+            trigger.addEventListener("click", openDialog);
+
+            closeButtons.forEach((button) => {
+                button.addEventListener("click", closeDialog);
+            });
+
+            backButtons.forEach((button) => {
+                button.addEventListener("click", () => {
+                    if (ingresoFormElement) {
+                        resetFormState(ingresoFormElement);
+                    }
+                    if (gastoFormElement) {
+                        resetFormState(gastoFormElement);
+                    }
+                    showSelector();
+                });
+            });
+
+            choiceButtons.forEach((button) => {
+                button.addEventListener("click", () => {
+                    const choice = button.dataset.choice || "ingreso";
+                    if (choice === "ingreso") {
+                        showForm("ingreso");
+                        return;
+                    }
+                    if (choice === "gasto") {
+                        showForm("gasto");
+                        return;
+                    }
+                });
+            });
+
+            dialog.addEventListener("click", (event) => {
+                if (event.target === dialog) {
+                    closeDialog();
+                }
+            });
+
+            dialog.addEventListener("cancel", (event) => {
+                event.preventDefault();
+                closeDialog();
+            });
+
+            dialog.addEventListener("close", () => {
+                document.body.style.overflow = "";
+            });
+
+            dialog.addEventListener("keydown", (event) => {
+                if (event.key !== "Tab") {
+                    return;
+                }
+
+                const activeStep = getActiveStep();
+                const currentStep = activeStep || selectorStep;
+                const focusable = currentStep ? Array.from(currentStep.querySelectorAll(focusableSelector)).filter((element) => {
+                    const style = window.getComputedStyle(element);
+                    return style.visibility !== "hidden" && style.display !== "none";
+                }) : [];
+
+                if (focusable.length === 0) {
+                    event.preventDefault();
+                    return;
+                }
+
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+
+                if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
+            });
+
+            if (dialog.dataset.openForm === "true") {
+                dialog.dataset.openFormType = dialog.dataset.openFormType || (dialog.dataset.openForm === "true" && dialog.dataset.hasServerErrors === "true" ? "gasto" : "ingreso");
+                showForm(dialog.dataset.openFormType === "gasto" ? "gasto" : "ingreso");
+
+                if (!dialog.open) {
+                    dialog.showModal();
+                }
+
+                document.body.style.overflow = "hidden";
+
+                const activeFormForFocus = getActiveForm();
+                const firstInvalidField = activeFormForFocus?.querySelector('[aria-invalid="true"]');
+                firstInvalidField?.focus();
+            } else {
+                showSelector();
+            }
+        })();
+    </script>
+
+    <script>
+        (() => {
+            const menuButtons = document.querySelectorAll("[data-movement-menu-button]");
+            const deleteButtons = document.querySelectorAll("[data-delete-movement]");
+            const deleteDialog = document.getElementById("delete-movement-dialog");
+            const deleteForm = document.getElementById("delete-movement-form");
+            const deleteName = deleteDialog?.querySelector("[data-delete-movement-name]");
+            const deleteImpact = deleteDialog?.querySelector("[data-delete-movement-impact]");
+            const closeDeleteButtons = document.querySelectorAll("[data-close-delete-dialog]");
+            const deleteSubmitButton = document.querySelector("[data-delete-submit]");
+            let lastTriggeredMenuButton = null;
+
+            const formatCurrency = (value) => {
+                const number = Number(value || 0);
+                return new Intl.NumberFormat("es-AR", {
+                    style: "currency",
+                    currency: "ARS",
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(number);
+            };
+
+            const closeAllMenus = () => {
+                document.querySelectorAll(".table-action-menu").forEach((menu) => {
+                    menu.hidden = true;
+                    menu.previousElementSibling?.setAttribute("aria-expanded", "false");
+                });
+            };
+
+            const closeDeleteDialog = () => {
+                if (deleteDialog && deleteDialog.open) {
+                    deleteDialog.close();
+                }
+                document.body.style.overflow = "";
+                if (lastTriggeredMenuButton) {
+                    lastTriggeredMenuButton.focus();
+                }
+            };
+
+            const openDeleteDialog = (button) => {
+                if (!deleteDialog || !deleteForm || !deleteName || !deleteImpact) {
+                    return;
+                }
+
+                lastTriggeredMenuButton = button.closest("[data-movement-menu-button]") || button;
+
+                const movementId = button.dataset.movementId;
+                const movementName = button.dataset.movementName || "movimiento";
+                const movementType = button.dataset.movementType || "Gasto";
+                const movementAmount = button.dataset.movementAmount || "0";
+
+                deleteName.textContent = movementName;
+
+                const amountText = formatCurrency(Number(String(movementAmount).replace(",", ".")) || 0);
+                if (movementType === "Gasto") {
+                    deleteImpact.textContent = `Al eliminar este gasto, tu saldo disponible aumentará en ${amountText}.`;
+                } else {
+                    deleteImpact.textContent = `Al eliminar este ingreso, tu saldo disponible disminuirá en ${amountText}.`;
+                }
+
+                const hiddenId = deleteForm.querySelector('input[name="idMovimiento"]');
+                if (hiddenId) {
+                    hiddenId.value = movementId;
+                }
+
+                deleteDialog.showModal();
+                document.body.style.overflow = "hidden";
+
+                if (deleteSubmitButton) {
+                    deleteSubmitButton.disabled = false;
+                    deleteSubmitButton.removeAttribute("aria-disabled");
+                }
+
+                closeAllMenus();
+                const cancelButton = deleteDialog.querySelector('[data-close-delete-dialog]');
+                cancelButton?.focus();
+            };
+
+            menuButtons.forEach((button) => {
+                button.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    const menu = button.nextElementSibling;
+                    const isOpen = menu && !menu.hidden;
+
+                    closeAllMenus();
+
+                    if (menu && !isOpen) {
+                        menu.hidden = false;
+                        button.setAttribute("aria-expanded", "true");
+                    }
+                });
+            });
+
+            deleteButtons.forEach((button) => {
+                button.addEventListener("click", () => {
+                    openDeleteDialog(button);
+                });
+            });
+
+            document.addEventListener("click", (event) => {
+                const menuTarget = event.target.closest(".table-action-menu");
+                const actionTarget = event.target.closest("[data-movement-menu-button]");
+                const deleteTarget = event.target.closest("[data-delete-movement]");
+
+                if (!menuTarget && !actionTarget && !deleteTarget) {
+                    closeAllMenus();
+                }
+            });
+
+            closeDeleteButtons.forEach((button) => {
+                button.addEventListener("click", () => {
+                    closeDeleteDialog();
+                });
+            });
+
+            if (deleteDialog) {
+                deleteDialog.addEventListener("cancel", (event) => {
+                    event.preventDefault();
+                    closeDeleteDialog();
+                });
+
+                deleteDialog.addEventListener("close", () => {
+                    document.body.style.overflow = "";
+                });
+            }
+
+            deleteSubmitButton?.addEventListener("click", () => {
+                deleteSubmitButton.disabled = true;
+                deleteSubmitButton.setAttribute("aria-disabled", "true");
+            });
+
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape" && deleteDialog && deleteDialog.open) {
+                    event.preventDefault();
+                    closeDeleteDialog();
+                }
+            });
+        })();
+    </script>
+}

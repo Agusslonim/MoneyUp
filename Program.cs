@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<SqlConnectionFactory>();
 builder.Services.AddScoped<UsuarioDataService>();
+builder.Services.AddScoped<MovimientoDataService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
