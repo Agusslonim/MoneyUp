@@ -1,0 +1,150 @@
+@model MoneyUp.Models.MetasIndexViewModel
+@{
+    ViewData["Title"] = "Metas";
+    Layout = "_LayoutPrivado";
+    var estadoActual = string.Equals(Model.EstadoFiltro, "Cumplida", StringComparison.OrdinalIgnoreCase) ? "Cumplida" : "Activa";
+    var cultura = new System.Globalization.CultureInfo("es-AR");
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/metas.css" asp-append-version="true" />
+}
+
+<section class="metas-page">
+    <div class="container metas-shell">
+        <header class="metas-header">
+            <div>
+                <h1>Metas</h1>
+                <p>Organizá tus objetivos y seguí cuánto te falta para alcanzarlos.</p>
+            </div>
+            <button type="button" class="metas-primary-button" disabled aria-disabled="true">Nueva meta</button>
+        </header>
+
+        <div class="metas-summary-grid">
+            <article class="metas-summary-card">
+                <span class="metas-summary-label">Total ahorrado</span>
+                <strong>@Model.TotalAhorrado.ToString("C", cultura)</strong>
+            </article>
+            <article class="metas-summary-card">
+                <span class="metas-summary-label">Metas activas</span>
+                <strong>@Model.MetasActivas</strong>
+            </article>
+            <article class="metas-summary-card">
+                <span class="metas-summary-label">Progreso promedio</span>
+                <strong>@Model.ProgresoPromedio.ToString("0.##")%</strong>
+            </article>
+            <article class="metas-summary-card">
+                <span class="metas-summary-label">Aporte este mes</span>
+                <strong>@Model.AporteEsteMes.ToString("C", cultura)</strong>
+            </article>
+        </div>
+
+        <div class="metas-content">
+            <section class="metas-panel metas-main-panel">
+                <div class="metas-panel-header">
+                    <h2>Tus metas</h2>
+                    <div class="metas-tabs" aria-label="Filtro de metas">
+                        <a class="metas-tab @(estadoActual == "Activa" ? "active" : string.Empty)" asp-controller="Metas" asp-action="Index" asp-route-estado="Activa">Activas</a>
+                        <a class="metas-tab @(estadoActual == "Cumplida" ? "active" : string.Empty)" asp-controller="Metas" asp-action="Index" asp-route-estado="Cumplida">Cumplidas</a>
+                    </div>
+                </div>
+
+                @if (!Model.Metas.Any())
+                {
+                    <div class="metas-empty-state">
+                        <p>
+                            @(estadoActual == "Activa"
+                                ? "Todavía no tenés metas activas."
+                                : "Todavía no tenés metas cumplidas.")
+                        </p>
+                    </div>
+                }
+                else
+                {
+                    <div class="metas-list">
+                        @foreach (var meta in Model.Metas)
+                        {
+                            var iconValue = string.IsNullOrWhiteSpace(meta.Icono) ? "meta" : meta.Icono.Trim();
+                            var iconClass = iconValue switch
+                            {
+                                "meta" or "objetivo" or "idea" or "dinero" or "viaje" or "estrella" => iconValue,
+                                _ => "meta"
+                            };
+
+                            <article class="metas-goal-item">
+                                <div class="metas-goal-header">
+                                    <div class="metas-goal-name-wrap">
+                                        <span class="metas-goal-icon icon icon-@iconClass" aria-hidden="true"></span>
+                                        <div>
+                                            <h3>@meta.Nombre</h3>
+                                            <span class="metas-goal-amount">Objetivo: @meta.MontoObjetivo.ToString("C", cultura)</span>
+                                        </div>
+                                    </div>
+                                    <div class="metas-goal-metric">
+                                        <span class="metas-goal-value">@meta.AhorroActual.ToString("C", cultura)</span>
+                                        <span class="metas-goal-percent">@meta.Porcentaje.ToString("0.##")%</span>
+                                    </div>
+                                </div>
+
+                                <div class="metas-progress-row">
+                                    <div class="metas-progress-track" aria-label="Progreso de la meta @meta.Nombre">
+                                        <span style="width:@Math.Clamp(meta.Porcentaje, 0m, 100m)%"></span>
+                                    </div>
+                                </div>
+
+                                <div class="metas-goal-footer">
+                                    <span>Ahorro neto</span>
+                                    <strong>@meta.AhorroActual.ToString("C", cultura)</strong>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+
+            <aside class="metas-side-column">
+                <section class="metas-panel metas-side-box">
+                    <div class="metas-side-header">
+                        <h2>Próximos aportes</h2>
+                    </div>
+
+                    @if (!Model.ProximosAportes.Any())
+                    {
+                        <p class="metas-side-empty">No tenés próximos aportes programados.</p>
+                    }
+                    else
+                    {
+                        <ul class="metas-contributions-list">
+                            @foreach (var aporte in Model.ProximosAportes)
+                            {
+                                var iconValue = string.IsNullOrWhiteSpace(aporte.Icono) ? "meta" : aporte.Icono.Trim();
+                                var iconClass = iconValue switch
+                                {
+                                    "meta" or "objetivo" or "idea" or "dinero" or "viaje" or "estrella" => iconValue,
+                                    _ => "meta"
+                                };
+
+                                <li>
+                                    <span class="metas-contribution-icon icon icon-@iconClass" aria-hidden="true"></span>
+                                    <div>
+                                        <strong>@aporte.NombreMeta</strong>
+                                        <span>@aporte.FechaProgramada.ToString("dd 'de' MMMM", cultura)</span>
+                                    </div>
+                                    <strong class="metas-contribution-amount">@aporte.MontoProgramado.ToString("C", cultura)</strong>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </section>
+
+                <section class="metas-panel metas-message-box">
+                    <div class="metas-side-header metas-message-header">
+                        <span class="metas-message-icon icon icon-idea" aria-hidden="true"></span>
+                        <h2>Mensaje de Up</h2>
+                    </div>
+                    <p>Próximamente, Up te ayudará a planificar tus aportes.</p>
+                </section>
+            </aside>
+        </div>
+    </div>
+</section>

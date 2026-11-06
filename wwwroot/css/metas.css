@@ -1,0 +1,378 @@
+.metas-page {
+  padding-top: 4px;
+}
+
+.metas-shell {
+  display: grid;
+  gap: 24px;
+}
+
+.metas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 2px;
+}
+
+.metas-header h1 {
+  margin: 0 0 6px;
+  font-size: clamp(2.1rem, 2.5vw, 3.1rem);
+  letter-spacing: -0.06em;
+}
+
+.metas-header p {
+  margin: 0;
+  color: #666;
+  font-size: 1.04rem;
+}
+
+.metas-primary-button {
+  border: 1px solid rgba(111, 46, 242, 0.2);
+  background: #f1ebff;
+  color: #6f2ef2;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 0 18px;
+  font-weight: 700;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.metas-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.metas-summary-card {
+  background: #fff;
+  border: 1px solid #e6e6e7;
+  border-radius: 18px;
+  padding: 18px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  min-height: 130px;
+}
+
+.metas-summary-card strong {
+  display: block;
+  font-size: clamp(1.4rem, 1.7vw, 2rem);
+  letter-spacing: -0.05em;
+  line-height: 1.1;
+}
+
+.metas-summary-label {
+  color: #666;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.metas-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(290px, 0.9fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.metas-panel {
+  background: #fff;
+  border: 1px solid #e6e6e7;
+  border-radius: 20px;
+  padding: 18px 18px 16px;
+}
+
+.metas-main-panel {
+  min-height: 420px;
+}
+
+.metas-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.metas-panel-header h2,
+.metas-side-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  letter-spacing: -0.04em;
+}
+
+.metas-tabs {
+  display: inline-flex;
+  background: #f4f3f6;
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.metas-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  color: #666;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.metas-tab.active {
+  background: #fff;
+  color: #171717;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.metas-list {
+  display: grid;
+  gap: 14px;
+}
+
+.metas-goal-item {
+  display: grid;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  border: 1px solid #f0eff2;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.metas-goal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.metas-goal-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.metas-goal-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(111, 46, 242, 0.12);
+  color: #6f2ef2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.metas-goal-name-wrap h3 {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+  letter-spacing: -0.04em;
+}
+
+.metas-goal-amount {
+  color: #666;
+  font-size: 0.82rem;
+}
+
+.metas-goal-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+}
+
+.metas-goal-value {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.metas-goal-percent {
+  color: #6f2ef2;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.metas-progress-row {
+  display: block;
+}
+
+.metas-progress-track {
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: #f1f1f3;
+  overflow: hidden;
+}
+
+.metas-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6f2ef2, #7adff0);
+}
+
+.metas-goal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #666;
+  font-size: 0.8rem;
+}
+
+.metas-goal-footer strong {
+  color: #171717;
+  font-size: 0.96rem;
+}
+
+.metas-side-column {
+  display: grid;
+  gap: 20px;
+}
+
+.metas-side-box {
+  display: grid;
+  gap: 12px;
+}
+
+.metas-side-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metas-side-empty {
+  margin: 0;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.metas-contributions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.metas-contributions-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.metas-contributions-list li:last-child {
+  border-bottom: 0;
+}
+
+.metas-contribution-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(111, 46, 242, 0.12);
+  color: #6f2ef2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.metas-contributions-list li > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.metas-contributions-list li strong {
+  font-size: 0.96rem;
+}
+
+.metas-contributions-list li span {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+.metas-contribution-amount {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.metas-message-box {
+  padding-bottom: 18px;
+}
+
+.metas-message-header {
+  align-items: center;
+}
+
+.metas-message-icon {
+  width: 26px;
+  height: 26px;
+  color: #6f2ef2;
+  display: inline-flex;
+}
+
+.metas-message-box p {
+  margin: 0;
+  color: #4c4c4c;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.metas-empty-state {
+  padding: 24px 18px;
+  border: 1px dashed #d8d6dc;
+  border-radius: 16px;
+  background: #fafafa;
+  color: #666;
+}
+
+@media (max-width: 900px) {
+  .metas-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metas-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .metas-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metas-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metas-goal-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metas-goal-metric {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .metas-contributions-list li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .metas-contribution-amount {
+    grid-column: 2;
+  }
+}
