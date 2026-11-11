@@ -4,10 +4,18 @@
     Layout = "_LayoutPrivado";
     var estadoActual = string.Equals(Model.EstadoFiltro, "Cumplida", StringComparison.OrdinalIgnoreCase) ? "Cumplida" : "Activa";
     var cultura = new System.Globalization.CultureInfo("es-AR");
+    var metaForm = Model.MetaForm ?? new MoneyUp.Models.CrearMetaFormViewModel();
+    var openMetaModal = ViewData["OpenMetaModal"] is bool isOpenMetaModal && isOpenMetaModal;
+    var hasMetaFormErrors = ViewData["HasMetaFormErrors"] is bool hasErrors && hasErrors;
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/metas.css" asp-append-version="true" />
+}
+
+@if (TempData["MetaExito"] is string metaExito)
+{
+    <div class="metas-success-banner" role="status" aria-live="polite">@metaExito</div>
 }
 
 <section class="metas-page">
@@ -17,7 +25,7 @@
                 <h1>Metas</h1>
                 <p>Organizá tus objetivos y seguí cuánto te falta para alcanzarlos.</p>
             </div>
-            <button type="button" class="metas-primary-button" disabled aria-disabled="true">Nueva meta</button>
+            <button type="button" class="metas-primary-button" data-open-meta-modal aria-label="Abrir nueva meta">Nueva meta</button>
         </header>
 
         <div class="metas-summary-grid">
@@ -70,6 +78,10 @@
                                 "meta" or "objetivo" or "idea" or "dinero" or "viaje" or "estrella" => iconValue,
                                 _ => "meta"
                             };
+                            var porcentaje = meta.MontoObjetivo > 0m ? (meta.AhorroActual / meta.MontoObjetivo) * 100m : 0m;
+                            var porcentajeVisual = Math.Clamp(porcentaje, 0m, 100m);
+                            var porcentajeTexto = porcentaje <= 0m ? "0%" : porcentaje > 0m && porcentaje < 0.01m ? "<0,01%" : porcentaje.ToString("0.##", System.Globalization.CultureInfo.GetCultureInfo("es-AR")) + "%";
+                            var anchoVisual = porcentajeVisual.ToString("0.####################", System.Globalization.CultureInfo.InvariantCulture);
 
                             <article class="metas-goal-item">
                                 <div class="metas-goal-header">
@@ -82,13 +94,13 @@
                                     </div>
                                     <div class="metas-goal-metric">
                                         <span class="metas-goal-value">@meta.AhorroActual.ToString("C", cultura)</span>
-                                        <span class="metas-goal-percent">@meta.Porcentaje.ToString("0.##")%</span>
+                                        <span class="metas-goal-percent">@porcentajeTexto</span>
                                     </div>
                                 </div>
 
                                 <div class="metas-progress-row">
                                     <div class="metas-progress-track" aria-label="Progreso de la meta @meta.Nombre">
-                                        <span style="width:@Math.Clamp(meta.Porcentaje, 0m, 100m)%"></span>
+                                        <span style="width:@(anchoVisual)%"></span>
                                     </div>
                                 </div>
 
@@ -148,3 +160,196 @@
         </div>
     </div>
 </section>
+
+<dialog id="nueva-meta-modal" class="metas-goal-dialog" aria-labelledby="meta-modal-title" aria-describedby="meta-modal-description" data-open-modal="@(openMetaModal ? "true" : "false")" data-has-server-errors="@(hasMetaFormErrors ? "true" : "false")">
+    <div class="metas-goal-dialog-panel">
+        <button type="button" class="metas-dialog-close" aria-label="Cerrar nueva meta" data-close-meta-modal>
+            <span aria-hidden="true">×</span>
+        </button>
+
+        <form method="post" asp-controller="Metas" asp-action="Crear" class="metas-goal-form" novalidate>
+            @Html.AntiForgeryToken()
+
+            <div class="metas-dialog-header">
+                <div>
+                    <h2 id="meta-modal-title">Crear nueva meta</h2>
+                    <p id="meta-modal-description">Definí tu objetivo y empezá a ahorrar.</p>
+                </div>
+            </div>
+
+            <div asp-validation-summary="ModelOnly" class="metas-form-summary"></div>
+            @if (ViewData.ModelState.TryGetValue(string.Empty, out var generalErrors) && generalErrors.Errors.Count > 0)
+            {
+                foreach (var error in generalErrors.Errors)
+                {
+                    <p class="metas-form-general-error">@error.ErrorMessage</p>
+                }
+            }
+
+            <div class="metas-form-grid">
+                <div class="metas-field metas-field-full">
+                    <label for="NombreMeta">Nombre de la meta</label>
+                    <input id="NombreMeta" name="NombreMeta" type="text" value="@metaForm.NombreMeta" maxlength="100" aria-invalid="@(ViewData.ModelState["NombreMeta"]?.Errors.Count > 0 ? "true" : "false")" />
+                    @if (ViewData.ModelState.TryGetValue(nameof(MoneyUp.Models.CrearMetaFormViewModel.NombreMeta), out var nombreErrors) && nombreErrors.Errors.Count > 0)
+                    {
+                        <span class="field-validation-error">@nombreErrors.Errors[0].ErrorMessage</span>
+                    }
+                </div>
+
+                <div class="metas-field">
+                    <label for="MontoObjetivo">Monto objetivo</label>
+                    <input id="MontoObjetivo" name="MontoObjetivo" type="text" value="@metaForm.MontoObjetivo" inputmode="decimal" autocomplete="off" placeholder="1500,50" aria-invalid="@(ViewData.ModelState["MontoObjetivo"]?.Errors.Count > 0 ? "true" : "false")" />
+                    @if (ViewData.ModelState.TryGetValue(nameof(MoneyUp.Models.CrearMetaFormViewModel.MontoObjetivo), out var objetivoErrors) && objetivoErrors.Errors.Count > 0)
+                    {
+                        <span class="field-validation-error">@objetivoErrors.Errors[0].ErrorMessage</span>
+                    }
+                </div>
+
+                <div class="metas-field">
+                    <label for="AhorroInicial">Ahorro inicial</label>
+                    <input id="AhorroInicial" name="AhorroInicial" type="text" value="@metaForm.AhorroInicial" inputmode="decimal" autocomplete="off" placeholder="0,00" aria-invalid="@(ViewData.ModelState["AhorroInicial"]?.Errors.Count > 0 ? "true" : "false")" />
+                    <small class="metas-helper-copy">Se descontará de tu saldo disponible y quedará reservado en esta meta.</small>
+                    @if (ViewData.ModelState.TryGetValue(nameof(MoneyUp.Models.CrearMetaFormViewModel.AhorroInicial), out var ahorroErrors) && ahorroErrors.Errors.Count > 0)
+                    {
+                        <span class="field-validation-error">@ahorroErrors.Errors[0].ErrorMessage</span>
+                    }
+                </div>
+
+                <div class="metas-field">
+                    <label for="FechaObjetivo">Fecha objetivo</label>
+                    <input id="FechaObjetivo" name="FechaObjetivo" type="date" value="@(metaForm.FechaObjetivo.HasValue ? metaForm.FechaObjetivo.Value.ToString("yyyy-MM-dd") : string.Empty)" aria-invalid="@(ViewData.ModelState["FechaObjetivo"]?.Errors.Count > 0 ? "true" : "false")" />
+                    @if (ViewData.ModelState.TryGetValue(nameof(MoneyUp.Models.CrearMetaFormViewModel.FechaObjetivo), out var fechaErrors) && fechaErrors.Errors.Count > 0)
+                    {
+                        <span class="field-validation-error">@fechaErrors.Errors[0].ErrorMessage</span>
+                    }
+                </div>
+
+                <div class="metas-field metas-field-full">
+                    <label for="Frecuencia">Frecuencia de aporte</label>
+                    <input id="Frecuencia" name="Frecuencia" type="text" value="@metaForm.Frecuencia" disabled aria-disabled="true" />
+                </div>
+
+                <div class="metas-field metas-field-full">
+                    <div class="metas-plan-block">
+                        <span class="metas-plan-label">Tu plan de ahorro</span>
+                        <p>Próximamente podrás planificar tus aportes.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metas-modal-actions">
+                <button type="button" class="metas-secondary-button" data-close-meta-modal>Cancelar</button>
+                <button type="submit" class="metas-primary-button metas-submit-button">Crear meta</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+@section Scripts {
+    <script>
+        (() => {
+            const trigger = document.querySelector("[data-open-meta-modal]");
+            const dialog = document.getElementById("nueva-meta-modal");
+            const form = dialog?.querySelector(".metas-goal-form");
+            const closeButtons = dialog ? dialog.querySelectorAll("[data-close-meta-modal]") : [];
+            const submitButton = form?.querySelector("button[type='submit']");
+            const focusableSelector = [
+                "button:not([disabled])",
+                "input:not([disabled])",
+                "select:not([disabled])",
+                "textarea:not([disabled])",
+                "[tabindex]:not([tabindex='-1'])"
+            ].join(", ");
+
+            const resetForm = () => {
+                if (!form) return;
+                form.reset();
+                const nameInput = form.querySelector("#NombreMeta");
+                if (nameInput) nameInput.value = "";
+                const objectiveInput = form.querySelector("#MontoObjetivo");
+                if (objectiveInput) objectiveInput.value = "";
+                const initialInput = form.querySelector("#AhorroInicial");
+                if (initialInput) initialInput.value = "";
+                const dateInput = form.querySelector("#FechaObjetivo");
+                if (dateInput) dateInput.value = "";
+                const frequencyInput = form.querySelector("#Frecuencia");
+                if (frequencyInput) frequencyInput.value = "Mensual";
+                form.querySelectorAll(".field-validation-error, .metas-form-summary, .metas-form-general-error").forEach((element) => element.remove());
+                form.querySelectorAll("[aria-invalid='true']").forEach((field) => field.setAttribute("aria-invalid", "false"));
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.removeAttribute("aria-disabled");
+                }
+            };
+
+            const closeDialog = () => {
+                if (!dialog || !dialog.open) return;
+                dialog.close();
+                document.body.style.overflow = "";
+                resetForm();
+                trigger?.focus();
+            };
+
+            const openDialog = () => {
+                if (!dialog) return;
+                if (dialog.open) return;
+                resetForm();
+                dialog.showModal();
+                document.body.style.overflow = "hidden";
+                const firstInput = dialog.querySelector("#NombreMeta");
+                if (firstInput) firstInput.focus();
+            };
+
+            if (trigger && dialog) {
+                trigger.addEventListener("click", openDialog);
+            }
+
+            closeButtons.forEach((button) => {
+                button.addEventListener("click", closeDialog);
+            });
+
+            dialog?.addEventListener("cancel", (event) => {
+                event.preventDefault();
+                closeDialog();
+            });
+
+            dialog?.addEventListener("click", (event) => {
+                if (event.target === dialog) {
+                    closeDialog();
+                }
+            });
+
+            dialog?.addEventListener("keydown", (event) => {
+                if (event.key !== "Tab" || !dialog.open) return;
+                const focusable = Array.from(dialog.querySelectorAll(focusableSelector)).filter((element) => {
+                    const style = window.getComputedStyle(element);
+                    return style.display !== "none" && style.visibility !== "hidden";
+                });
+                if (focusable.length === 0) return;
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
+            });
+
+            form?.addEventListener("submit", () => {
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.setAttribute("aria-disabled", "true");
+                }
+            });
+
+            if (dialog && dialog.dataset.openModal === "true") {
+                dialog.showModal();
+                document.body.style.overflow = "hidden";
+                const firstInvalidField = dialog.querySelector('[aria-invalid="true"]');
+                (firstInvalidField ?? dialog.querySelector("#NombreMeta"))?.focus();
+            }
+        })();
+    </script>
+}

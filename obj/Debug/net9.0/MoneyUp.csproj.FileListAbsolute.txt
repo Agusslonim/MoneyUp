@@ -75,5 +75,5 @@ Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\7nmjybo7o9-t8
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\mru7ivngqo-24k6bmtqn5.gz
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\pe5687ulth-1ewwc280wa.gz
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\w8mo83ibty-zrqb6rse8g.gz
-Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\8805in9idn-ptbsi72y8t.gz
 Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\4jbd20t7qr-2fngxb91wt.gz
+Z:\MoneyUp escenciales\MoneyUp\MoneyUp\obj\Debug\net9.0\compressed\8805in9idn-slopahm0yt.gz

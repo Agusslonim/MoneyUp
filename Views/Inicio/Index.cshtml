@@ -1,7 +1,9 @@
 @model MoneyUp.Models.InicioViewModel
+@using System.Globalization
 @{
     ViewData["Title"] = "Inicio";
     Layout = "_LayoutPrivado";
+    var cultura = new CultureInfo("es-AR");
 }
 
 <section class="private-shell">
@@ -21,7 +23,7 @@
                     </div>
                     <div class="balance-copy">
                         <span class="label">Tu saldo actual</span>
-                        <strong>@Model.SaldoDisponible.ToString("C", new System.Globalization.CultureInfo("es-AR"))</strong>
+                        <strong>@Model.SaldoDisponible.ToString("C", cultura)</strong>
                     </div>
                 </div>
 
@@ -50,9 +52,9 @@
                         @foreach (var movimiento in Model.UltimosMovimientos)
                         {
                             var signo = movimiento.TipoMovimiento == 1 ? "+" : "-";
-                            var importe = Math.Abs(movimiento.Monto).ToString("C", new System.Globalization.CultureInfo("es-AR"));
+                            var importe = Math.Abs(movimiento.Monto).ToString("C", cultura);
                             var descripcion = !string.IsNullOrWhiteSpace(movimiento.Descripcion) ? movimiento.Descripcion : movimiento.Categoria;
-                            var fecha = movimiento.FechaMovimiento.ToString("dd 'de' MMMM", new System.Globalization.CultureInfo("es-AR"));
+                            var fecha = movimiento.FechaMovimiento.ToString("dd 'de' MMMM", cultura);
 
                             <div class="movement-row">
                                 <div class="movement-meta">
@@ -92,22 +94,27 @@
                     <div class="goals-list">
                         @foreach (var meta in Model.Metas)
                         {
-                            var porcentaje = Math.Min(100m, Math.Max(0m, meta.Porcentaje));
-                            <div class="goal-item">
-                                <div class="goal-topline">
-                                    <div class="goal-name">
-                                        <span class="goal-icon icon @($"icon-{meta.Icono}")" aria-hidden="true"></span>
-                                        <div>
-                                            <strong>@meta.Nombre</strong>
-                                            <small>@meta.AhorroActual.ToString("C", new System.Globalization.CultureInfo("es-AR")) / @meta.MontoObjetivo.ToString("C", new System.Globalization.CultureInfo("es-AR"))</small>
-                                        </div>
+                            var porcentaje = meta.MontoObjetivo > 0m ? (meta.AhorroActual / meta.MontoObjetivo) * 100m : 0m;
+                            var porcentajeVisual = Math.Clamp(porcentaje, 0m, 100m);
+                            var porcentajeTexto = porcentaje <= 0m ? "0%" : porcentaje > 0m && porcentaje < 0.01m ? "<0,01%" : porcentaje.ToString("0.##", cultura) + "%";
+                            var anchoVisual = porcentajeVisual.ToString("0.####################", CultureInfo.InvariantCulture);
+
+                            <li class="dashboard-goal-item">
+                                <div class="dashboard-goal-head">
+                                    <div class="dashboard-goal-label">
+                                        <span class="dashboard-goal-icon">📌</span>
+                                        <span>@meta.Nombre</span>
                                     </div>
-                                    <span class="goal-percent">@Math.Round(porcentaje, 0)%</span>
+                                    <strong>@porcentajeTexto</strong>
                                 </div>
-                                <div class="progress-bar" aria-label="Progreso de la meta @meta.Nombre">
-                                    <span style="width:@porcentaje%"></span>
+                                <div class="progress-track">
+                                    <span style="width: @(anchoVisual)%"></span>
                                 </div>
-                            </div>
+                                <div class="dashboard-goal-meta">
+                                    <small>@meta.AhorroActual.ToString("C", cultura)</small>
+                                    <small>@meta.MontoObjetivo.ToString("C", cultura)</small>
+                                </div>
+                            </li>
                         }
                     </div>
                 }

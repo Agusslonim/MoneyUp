@@ -20,6 +20,8 @@ public class MovimientoResumenViewModel
     public int TipoMovimiento { get; set; }
     public string Icono { get; set; } = "tarjeta";
     public string Color { get; set; } = "gris";
+    public string Origen { get; set; } = "Movimiento";
+    public bool TieneAccionesDisponibles { get; set; }
 }
 
 public class MetaResumenViewModel
@@ -29,6 +31,11 @@ public class MetaResumenViewModel
     public decimal MontoObjetivo { get; set; }
     public decimal AhorroActual { get; set; }
     public decimal Porcentaje { get; set; }
+    public decimal PorcentajeVisual => Math.Clamp(Porcentaje, 0m, 100m);
     public string Estado { get; set; } = "Activa";
     public string Icono { get; set; } = "meta";
+    public string PorcentajeTexto =>
+        Porcentaje <= 0m ? "0%" :
+        Porcentaje > 0m && Porcentaje < 0.01m ? "<0,01%" :
+        Porcentaje.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
 }

@@ -105,19 +105,39 @@ public sealed class UsuarioDataService
         await connection.OpenAsync(cancellationToken);
 
         var movimientos = await connection.QueryAsync<MovimientoBaseDto>(@"
-            SELECT
-                m.IdMovimiento,
-                m.IdUsuario,
-                m.TipoMovimiento,
-                m.Monto,
-                m.FechaMovimiento,
-                m.IdCategoria,
-                c.NombreCategoria AS Categoria,
-                m.Descripcion
-            FROM dbo.Movimiento m
-            LEFT JOIN dbo.Categoria c ON c.IdCategoria = m.IdCategoria
-            WHERE m.IdUsuario = @IdUsuario
-            ORDER BY m.FechaMovimiento DESC, m.IdMovimiento DESC;", new { IdUsuario = idUsuario });
+            SELECT *
+            FROM (
+                SELECT
+                    m.IdMovimiento,
+                    m.IdUsuario,
+                    m.TipoMovimiento,
+                    m.Monto,
+                    m.FechaMovimiento,
+                    m.IdCategoria,
+                    c.NombreCategoria AS Categoria,
+                    m.Descripcion,
+                    'Movimiento' AS Origen
+                FROM dbo.Movimiento m
+                LEFT JOIN dbo.Categoria c ON c.IdCategoria = m.IdCategoria
+                WHERE m.IdUsuario = @IdUsuario
+
+                UNION ALL
+
+                SELECT
+                    mm.IdMovimientoMeta AS IdMovimiento,
+                    m.IdUsuario,
+                    CASE WHEN mm.TipoOperacion = 'Aporte' THEN 1 ELSE 0 END AS TipoMovimiento,
+                    mm.Monto,
+                    mm.FechaMovimientoMeta AS FechaMovimiento,
+                    NULL AS IdCategoria,
+                    m.NombreMeta AS Categoria,
+                    CASE WHEN mm.TipoOperacion = 'Aporte' THEN 'Aporte a meta' ELSE 'Retiro de meta' END AS Descripcion,
+                    'Meta' AS Origen
+                FROM dbo.MovimientoMeta mm
+                INNER JOIN dbo.Meta m ON m.IdMeta = mm.IdMeta
+                WHERE m.IdUsuario = @IdUsuario
+            ) AS combinada
+            ORDER BY FechaMovimiento DESC, IdMovimiento DESC;", new { IdUsuario = idUsuario });
 
         var ingresos = await connection.QuerySingleAsync<decimal?>(@"
             SELECT COALESCE(SUM(Monto), 0)
@@ -144,9 +164,6 @@ public sealed class UsuarioDataService
         var saldoDisponible = (ingresos ?? 0m) - (gastos ?? 0m) - (aportes ?? 0m) + (retiros ?? 0m);
 
         var ultimosMovimientos = movimientos
-            .OrderByDescending(x => x.FechaMovimiento)
-            .ThenByDescending(x => x.IdMovimiento)
-            .Take(5)
             .Select(m => new MovimientoResumenViewModel
             {
                 IdMovimiento = m.IdMovimiento,
@@ -155,9 +172,13 @@ public sealed class UsuarioDataService
                 Categoria = string.IsNullOrWhiteSpace(m.Categoria) ? "General" : m.Categoria,
                 Monto = m.Monto,
                 TipoMovimiento = m.TipoMovimiento,
-                Icono = IconoPorCategoria(m.Categoria),
-                Color = "gris"
-            }).ToList();
+                Icono = string.Equals(m.Origen, "Meta", StringComparison.OrdinalIgnoreCase) ? "meta" : IconoPorCategoria(m.Categoria),
+                Color = "gris",
+                Origen = string.Equals(m.Origen, "Meta", StringComparison.OrdinalIgnoreCase) ? "Meta" : "Movimiento",
+                TieneAccionesDisponibles = false
+            })
+            .Take(5)
+            .ToList();
 
         var metas = await connection.QueryAsync<MetaDto>(@"
             SELECT
@@ -181,7 +202,7 @@ public sealed class UsuarioDataService
                 WHERE mm.IdMeta = @IdMeta AND m.IdUsuario = @IdUsuario;", new { IdMeta = meta.IdMeta, IdUsuario = idUsuario });
 
             var objetivo = meta.MontoObjetivo;
-            var porcentaje = objetivo == 0 ? 0m : Math.Min(100m, Math.Max(0m, (ahorroBruto ?? 0m) / objetivo * 100m));
+            var porcentaje = objetivo > 0m ? ((ahorroBruto ?? 0m) / objetivo) * 100m : 0m;
 
             metasResumen.Add(new MetaResumenViewModel
             {
@@ -229,6 +250,7 @@ public sealed class UsuarioDataService
         public int? IdCategoria { get; set; }
         public string? Categoria { get; set; }
         public string? Descripcion { get; set; }
+        public string Origen { get; set; } = "Movimiento";
     }
 
     private sealed class MetaDto
